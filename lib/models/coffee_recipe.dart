@@ -1,11 +1,10 @@
-/// Kullanıcının kaydettiği özel kahve reçetesi.
 class CoffeeRecipe {
   final String id;
   final String name;
   final String methodName;
   final double coffeeGrams;
   final double waterMl;
-  final double ratio; // 1:X
+  final double ratio;
   final String grindSize;
   final int waterTempC;
   final int totalTimeSeconds;

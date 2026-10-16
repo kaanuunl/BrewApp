@@ -5,7 +5,6 @@ import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import 'data_backup_dialog.dart';
 
-/// Tüm ana sekmelerde tutarlı başlık, tema değiştirici ve ayarlar butonları sunan bileşen.
 class AppHeader extends StatelessWidget {
   const AppHeader({
     super.key,
@@ -77,12 +76,12 @@ class AppHeader extends StatelessWidget {
         ),
         ...?actions,
         IconButton(
-          tooltip: 'Tema Değiştir (Açık/Koyu/Sistem)',
+          tooltip: 'Change theme (light/dark/system)',
           icon: Icon(themeIcon, color: context.accentCoffee, size: 22),
           onPressed: () => state.cycleThemeMode(),
         ),
         IconButton(
-          tooltip: 'Ayarlar ve Yedekleme',
+          tooltip: 'Settings and backup',
           icon: Icon(Icons.tune_outlined, color: context.accentCoffee, size: 22),
           onPressed: () => DataManagementSheet.show(context),
         ),

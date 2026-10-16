@@ -1,28 +1,25 @@
 import 'package:flutter/material.dart';
 
-/// Barista Brew — kahve temalı renk paleti ve tema.
 class AppColors {
   AppColors._();
 
-  // Açık tema renkleri
-  static const Color coffee = Color(0xFF6F4E37); // ana kahve
-  static const Color espresso = Color(0xFF3E2C22); // koyu espresso
-  static const Color caramel = Color(0xFFC68642); // karamel / vurgu
-  static const Color amber = Color(0xFFD9A05B); // süt köpüğü altın
-  static const Color cream = Color(0xFFFBF6EE); // arka plan krem
-  static const Color foam = Color(0xFFFFFFFF); // yüzey / köpük
-  static const Color milk = Color(0xFFF1E7D8); // yumuşak süt tonu
-  static const Color latte = Color(0xFFE7D9C4); // çizgi / kenarlık
+  static const Color coffee = Color(0xFF6F4E37);
+  static const Color espresso = Color(0xFF3E2C22);
+  static const Color caramel = Color(0xFFC68642);
+  static const Color amber = Color(0xFFD9A05B);
+  static const Color cream = Color(0xFFFBF6EE);
+  static const Color foam = Color(0xFFFFFFFF);
+  static const Color milk = Color(0xFFF1E7D8);
+  static const Color latte = Color(0xFFE7D9C4);
 
-  // Koyu tema (Espresso Roast) renkleri
-  static const Color darkCream = Color(0xFF14100E); // arka plan derin espresso
-  static const Color darkFoam = Color(0xFF1E1713); // kart ve yüzey
-  static const Color darkMilk = Color(0xFF2C211B); // pill / konteyner
-  static const Color darkLatte = Color(0xFF3E2F26); // kenarlık
-  static const Color darkTextPrimary = Color(0xFFF5EDE4); // açık krem metin
-  static const Color darkTextSecondary = Color(0xFFBCAAA4); // ikincil metin
-  static const Color darkCaramel = Color(0xFFE59C58); // parlak karamel vurgusu
-  static const Color darkCoffee = Color(0xFFD4976A); // açık kahve tonu
+  static const Color darkCream = Color(0xFF14100E);
+  static const Color darkFoam = Color(0xFF1E1713);
+  static const Color darkMilk = Color(0xFF2C211B);
+  static const Color darkLatte = Color(0xFF3E2F26);
+  static const Color darkTextPrimary = Color(0xFFF5EDE4);
+  static const Color darkTextSecondary = Color(0xFFBCAAA4);
+  static const Color darkCaramel = Color(0xFFE59C58);
+  static const Color darkCoffee = Color(0xFFD4976A);
 
   static const Color success = Color(0xFF3E7C4F);
   static const Color darkSuccess = Color(0xFF57A76D);
@@ -30,7 +27,6 @@ class AppColors {
   static const Color error = Color(0xFFB4432F);
 }
 
-/// Kolay erişim için tema duyarlı renk uzantısı.
 extension AppThemeContext on BuildContext {
   bool get isDark => Theme.of(this).brightness == Brightness.dark;
 
@@ -42,11 +38,9 @@ extension AppThemeContext on BuildContext {
   Color get cardFoam => isDark ? AppColors.darkFoam : AppColors.foam;
   Color get containerMilk => isDark ? AppColors.darkMilk : AppColors.milk;
   Color get borderLatte => isDark ? AppColors.darkLatte : AppColors.latte;
-  Color get accentCaramel =>
-      isDark ? AppColors.darkCaramel : AppColors.caramel;
+  Color get accentCaramel => isDark ? AppColors.darkCaramel : AppColors.caramel;
   Color get accentCoffee => isDark ? AppColors.darkCoffee : AppColors.coffee;
-  Color get statusSuccess =>
-      isDark ? AppColors.darkSuccess : AppColors.success;
+  Color get statusSuccess => isDark ? AppColors.darkSuccess : AppColors.success;
 }
 
 class AppTheme {
@@ -80,6 +74,16 @@ class AppTheme {
         outline: AppColors.latte,
       ),
       scaffoldBackgroundColor: AppColors.cream,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: _CoffeePageTransitionsBuilder(),
+          TargetPlatform.iOS: _CoffeePageTransitionsBuilder(),
+          TargetPlatform.macOS: _CoffeePageTransitionsBuilder(),
+          TargetPlatform.windows: _CoffeePageTransitionsBuilder(),
+          TargetPlatform.linux: _CoffeePageTransitionsBuilder(),
+          TargetPlatform.fuchsia: _CoffeePageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.cream,
         foregroundColor: AppColors.espresso,
@@ -139,8 +143,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.foam,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppColors.latte),
@@ -198,6 +204,16 @@ class AppTheme {
         outline: AppColors.darkLatte,
       ),
       scaffoldBackgroundColor: AppColors.darkCream,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: _CoffeePageTransitionsBuilder(),
+          TargetPlatform.iOS: _CoffeePageTransitionsBuilder(),
+          TargetPlatform.macOS: _CoffeePageTransitionsBuilder(),
+          TargetPlatform.windows: _CoffeePageTransitionsBuilder(),
+          TargetPlatform.linux: _CoffeePageTransitionsBuilder(),
+          TargetPlatform.fuchsia: _CoffeePageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.darkCream,
         foregroundColor: AppColors.darkTextPrimary,
@@ -257,8 +273,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.darkFoam,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppColors.darkLatte),
@@ -272,8 +290,9 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.darkCaramel, width: 2),
         ),
         labelStyle: const TextStyle(color: AppColors.darkTextSecondary),
-        hintStyle:
-            TextStyle(color: AppColors.darkTextSecondary.withValues(alpha: 0.5)),
+        hintStyle: TextStyle(
+          color: AppColors.darkTextSecondary.withValues(alpha: 0.5),
+        ),
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.darkLatte,
@@ -288,6 +307,38 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           side: const BorderSide(color: AppColors.darkLatte),
         ),
+      ),
+    );
+  }
+}
+
+class _CoffeePageTransitionsBuilder extends PageTransitionsBuilder {
+  const _CoffeePageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (MediaQuery.disableAnimationsOf(context)) return child;
+
+    final motion = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+
+    return FadeTransition(
+      opacity: motion,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.035),
+          end: Offset.zero,
+        ).animate(motion),
+        child: child,
       ),
     );
   }

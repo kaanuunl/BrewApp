@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../data/brew_methods_data.dart';
 import '../models/brew_method.dart';
+import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../widgets/animated_entry.dart';
 import '../widgets/app_header.dart';
 import 'method_detail_screen.dart';
 
-/// Demleme yöntemleri kütüphanesi.
 class MethodsScreen extends StatefulWidget {
   const MethodsScreen({super.key});
 
@@ -20,6 +22,8 @@ class _MethodsScreenState extends State<MethodsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final active =     context.select<AppState, int>((state) => state.activeTabIndex) ==
+    AppState.methodsTabIndex;
     final methods = BrewMethodsData.all.where((m) {
       if (_query.isEmpty) return true;
       final q = _query.toLowerCase();
@@ -38,16 +42,37 @@ class _MethodsScreenState extends State<MethodsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppHeader(
-                    title: 'Demleme Yöntemleri',
-                    subtitle: '${methods.length} yöntem • oran, öğütüm ve sıcaklık',
+                    title: 'Brewing Methods',
+                    subtitle:
+                        '${methods.length} methods • ratio, grind, and temperature',
                   ),
                   const SizedBox(height: 14),
                   TextField(
                     onChanged: (v) => setState(() => _query = v),
                     decoration: InputDecoration(
-                      hintText: 'Yöntem veya stil ara…',
-                      prefixIcon: Icon(Icons.search, color: context.accentCoffee),
+                      hintText: 'Search methods or styles…',
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: context.accentCoffee,
+                      ),
                     ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: context.containerMilk,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: context.borderLatte),
+                  ),
+                  child: Text(
+                    'Use recipes as starting points. Weigh the coffee, measure the water and time, then adjust one variable at a time in small steps to suit your taste.',
+                    style: TextStyle(
+                      color: context.textPrimary,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
                   ),
                 ],
               ),
@@ -57,7 +82,12 @@ class _MethodsScreenState extends State<MethodsScreen> {
               child: ListView.builder(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 itemCount: methods.length,
-                itemBuilder: (context, i) => _MethodCard(method: methods[i]),
+                itemBuilder: (context, i) => AnimatedEntry(
+                  key: ValueKey(methods[i].id),
+                  index: i,
+                  active: active,
+                  child: _MethodCard(method: methods[i]),
+                ),
               ),
             ),
           ],
@@ -78,9 +108,7 @@ class _MethodCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => MethodDetailScreen(method: method),
-          ),
+          MaterialPageRoute(builder: (_) => MethodDetailScreen(method: method)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -124,18 +152,18 @@ class _MethodCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Row(
+                    Wrap(
+                      spacing: 14,
+                      runSpacing: 6,
                       children: [
                         _Meta(
                           icon: Icons.scale_outlined,
                           text: fmtRatio(method.ratio),
                         ),
-                        const SizedBox(width: 14),
                         _Meta(
                           icon: Icons.thermostat_outlined,
                           text: '${method.waterTempC}°C',
                         ),
-                        const SizedBox(width: 14),
                         _Meta(
                           icon: Icons.timer_outlined,
                           text: fmtLongDuration(method.totalTimeSeconds),
@@ -190,10 +218,7 @@ class _Meta extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: context.accentCoffee),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(fontSize: 12, color: context.textPrimary),
-        ),
+        Text(text, style: TextStyle(fontSize: 12, color: context.textPrimary)),
       ],
     );
   }

@@ -8,24 +8,43 @@ import 'methods_screen.dart';
 import 'recipes_screen.dart';
 import 'timer_screen.dart';
 
-/// Uygulamanın ana iskeleti: alt gezinme çubuğu + 5 sekme.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   static const _screens = [
     CalculatorScreen(),
     MethodsScreen(),
-    RecipesScreen(),
     TimerScreen(),
+    RecipesScreen(),
     JournalScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     final activeIndex = context.watch<AppState>().activeTabIndex;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
     return Scaffold(
-      body: IndexedStack(index: activeIndex, children: _screens),
+      body: IndexedStack(
+        index: activeIndex,
+        children: [
+          for (var index = 0; index < _screens.length; index++)
+            IgnorePointer(
+              ignoring: index != activeIndex,
+              child: ExcludeSemantics(
+                excluding: index != activeIndex,
+                child: AnimatedOpacity(
+                  opacity: index == activeIndex ? 1 : 0,
+                  duration: reduceMotion
+                      ? Duration.zero
+                      : const Duration(milliseconds: 240),
+                  curve: Curves.easeInOutCubic,
+                  child: _screens[index],
+                ),
+              ),
+            ),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: activeIndex,
         onDestinationSelected: (i) => context.read<AppState>().setActiveTab(i),
@@ -33,27 +52,27 @@ class HomeScreen extends StatelessWidget {
           NavigationDestination(
             icon: Icon(Icons.calculate_outlined),
             selectedIcon: Icon(Icons.calculate),
-            label: 'Hesap',
+            label: 'Calculator',
           ),
           NavigationDestination(
             icon: Icon(Icons.filter_alt_outlined),
             selectedIcon: Icon(Icons.filter_alt),
-            label: 'Yöntemler',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bookmark_border),
-            selectedIcon: Icon(Icons.bookmark),
-            label: 'Reçeteler',
+            label: 'Methods',
           ),
           NavigationDestination(
             icon: Icon(Icons.timer_outlined),
             selectedIcon: Icon(Icons.timer),
-            label: 'Zamanlayıcı',
+            label: 'Timer',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bookmark_border),
+            selectedIcon: Icon(Icons.bookmark),
+            label: 'Recipes',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),
             selectedIcon: Icon(Icons.history),
-            label: 'Günlük',
+            label: 'Journal',
           ),
         ],
       ),

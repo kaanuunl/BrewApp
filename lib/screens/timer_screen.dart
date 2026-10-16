@@ -13,7 +13,6 @@ import '../utils/format.dart';
 import '../widgets/app_header.dart';
 import 'journal_screen.dart';
 
-/// Adım bazlı demleme zamanlayıcı (yöntemler ve özel reçeteler destekli).
 class TimerScreen extends StatefulWidget {
   const TimerScreen({super.key});
 
@@ -50,21 +49,47 @@ class _TimerScreenState extends State<TimerScreen> {
       final t = _recipe!.totalTimeSeconds;
       final coffee = _recipe!.coffeeGrams;
       final water = _recipe!.waterMl;
+      final method = BrewMethodsData.byName(_recipe!.methodName);
+      final outputLabel = method.ratioOutputLabel.toLowerCase();
+      final outputUnit = method.ratioOutputUnit;
+
+      if (method.id == 'espresso') {
+        final extractionTime = (t - 25).clamp(1, t);
+        return [
+          BrewStep(
+            title: 'Dose',
+            description: 'Weigh ${fmtNum(coffee)} g of coffee and add it to the basket.',
+            durationSeconds: 10,
+          ),
+          const BrewStep(
+            title: 'Distribute and tamp',
+            description: 'Distribute the coffee evenly and tamp the bed level.',
+            durationSeconds: 15,
+          ),
+          BrewStep(
+            title: 'Extraction',
+            description:
+                'Use ${fmtNum(water)} $outputUnit of $outputLabel as a starting target.',
+            durationSeconds: extractionTime,
+          ),
+        ];
+      }
 
       if (t <= 45) {
         return [
           BrewStep(
-            title: 'Tartım & Hazırlık',
-            description: '${fmtNum(coffee)} g kahveyi tart ve yerleştir.',
+            title: 'Dose and prepare',
+            description: 'Weigh ${fmtNum(coffee)} g of coffee and place it in the brewer.',
             durationSeconds: 10,
           ),
           BrewStep(
-            title: 'Ekstraksiyon',
-            description: '${fmtNum(water)} ml kahve çıkışı.',
+            title: 'Extraction',
+            description:
+                'Use ${fmtNum(water)} $outputUnit of $outputLabel as a starting target.',
             durationSeconds: t > 10 ? t - 10 : t,
           ),
         ];
-      } else if (t <= 180) {
+      } else if (method.id == 'v60' || method.id == 'chemex') {
         final bloomTime = 40;
         final rinseTime = 20;
         final pourTime = t > 100 ? (t - 60) ~/ 2 : 30;
@@ -72,42 +97,42 @@ class _TimerScreenState extends State<TimerScreen> {
 
         return [
           const BrewStep(
-            title: 'Filtreyi Islat',
-            description: 'Kağıt filtreyi sıcak suyla yıka, suyu boşalt.',
+            title: 'Rinse the filter',
+            description: 'Rinse the paper filter with hot water and discard the water.',
             durationSeconds: 20,
           ),
           BrewStep(
-            title: 'Bloom (Ön Demleme)',
-            description: '${fmtNum(coffee * 2)} ml su dök, gaz çıkışını bekle.',
+            title: 'Bloom',
+            description: 'Pour ${fmtNum(coffee * 2)} ml of water and let the coffee degas.',
             durationSeconds: bloomTime,
           ),
           BrewStep(
-            title: 'Ana Döküş',
-            description: 'Kalan suyu dairesel hareketlerle ekle.',
+            title: 'Main pour',
+            description: 'Add the remaining water in circular motions.',
             durationSeconds: pourTime > 0 ? pourTime : 30,
           ),
           BrewStep(
-            title: 'Süzülme',
-            description: 'Kahvenin fincana süzülmesini bekle.',
+            title: 'Drawdown',
+            description: 'Wait for the coffee to drain into the cup.',
             durationSeconds: drainTime > 0 ? drainTime : 30,
           ),
         ];
       } else {
         return [
           BrewStep(
-            title: 'Kahve & Su',
+            title: 'Coffee and water',
             description:
-                '${fmtNum(coffee)} g kahveye ${fmtNum(water)} ml su ekle.',
+                'Add ${fmtNum(water)} $outputUnit of $outputLabel to ${fmtNum(coffee)} g of coffee.',
             durationSeconds: 30,
           ),
           BrewStep(
-            title: 'Demleme',
-            description: 'Kahveyi demlenmeye bırak.',
+            title: 'Steep',
+            description: 'Let the coffee brew.',
             durationSeconds: t > 60 ? t - 60 : t,
           ),
           const BrewStep(
-            title: 'Süzme & Servis',
-            description: 'Filtrele veya pistonu yavaşça indir.',
+            title: 'Filter and serve',
+            description: 'Filter the coffee or lower the plunger slowly.',
             durationSeconds: 30,
           ),
         ];
@@ -118,8 +143,7 @@ class _TimerScreenState extends State<TimerScreen> {
 
   int get _stepsTotal {
     if (_recipe != null) return _recipe!.totalTimeSeconds;
-    final s =
-        _steps.fold<int>(0, (sum, st) => sum + (st.durationSeconds ?? 0));
+    final s = _steps.fold<int>(0, (sum, st) => sum + (st.durationSeconds ?? 0));
     return s > 0 ? s : _method.totalTimeSeconds;
   }
 
@@ -149,9 +173,13 @@ class _TimerScreenState extends State<TimerScreen> {
   void _triggerFinishHaptic() {
     HapticFeedback.heavyImpact();
     Future.delayed(
-        const Duration(milliseconds: 300), () => HapticFeedback.heavyImpact());
+      const Duration(milliseconds: 300),
+      () => HapticFeedback.heavyImpact(),
+    );
     Future.delayed(
-        const Duration(milliseconds: 600), () => HapticFeedback.heavyImpact());
+      const Duration(milliseconds: 600),
+      () => HapticFeedback.heavyImpact(),
+    );
   }
 
   void _toggle() {
@@ -171,7 +199,6 @@ class _TimerScreenState extends State<TimerScreen> {
           if (_remaining > 0) {
             _remaining--;
 
-            // Adım geçişi kontrolü
             final curStep = _activeStepIndex();
             if (curStep != _lastStepIdx && curStep >= 0) {
               _lastStepIdx = curStep;
@@ -211,11 +238,7 @@ class _TimerScreenState extends State<TimerScreen> {
     HapticFeedback.selectionClick();
     setState(() {
       _recipe = r;
-      // Reçetenin adına en yakın yöntemi bul
-      final matching = BrewMethodsData.all.firstWhere(
-        (m) => m.name == r.methodName,
-        orElse: () => BrewMethodsData.byId('v60'),
-      );
+      final matching = BrewMethodsData.byName(r.methodName);
       _method = matching;
     });
     _reset();
@@ -245,7 +268,7 @@ class _TimerScreenState extends State<TimerScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (_) => LogFormSheet(
-        prefillMethodName: _recipe?.name ?? _method.name,
+        prefillMethodName: _recipe?.methodName ?? _method.name,
         prefillCoffee: _recipe?.coffeeGrams ?? _method.defaultCoffeeGrams,
         prefillRatio: _recipe?.ratio ?? _method.ratio,
         prefillTemp: _recipe?.waterTempC ?? _method.waterTempC,
@@ -263,8 +286,11 @@ class _TimerScreenState extends State<TimerScreen> {
     final activeIdx = _activeStepIndex();
 
     final title = _recipe != null ? _recipe!.name : _method.name;
+    final recipeMethod = _recipe == null
+        ? _method
+        : BrewMethodsData.byName(_recipe!.methodName);
     final subtitle = _recipe != null
-        ? '${_recipe!.methodName} • ${fmtNum(_recipe!.coffeeGrams)}g / ${fmtNum(_recipe!.waterMl)}ml'
+        ? '${recipeMethod.name} • ${fmtNum(_recipe!.coffeeGrams)} g / ${fmtNum(_recipe!.waterMl)} ${recipeMethod.ratioOutputUnit}'
         : '${_method.subtitle} • ${_method.waterTempC}°C';
 
     return Scaffold(
@@ -273,13 +299,12 @@ class _TimerScreenState extends State<TimerScreen> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
           children: [
             const AppHeader(
-              title: 'Demleme Zamanlayıcı',
-              subtitle: 'Adım adım kılavuz ve geri sayım',
+              title: 'Brew Timer',
+              subtitle: 'Step-by-step guide and countdown',
               icon: Icons.timer_outlined,
             ),
             const SizedBox(height: 16),
 
-            // Seçim Çipleri (Standart Yöntemler + Özel Reçeteler)
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -336,7 +361,6 @@ class _TimerScreenState extends State<TimerScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Aktif Bilgi Kartı
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
@@ -376,13 +400,15 @@ class _TimerScreenState extends State<TimerScreen> {
                   if (_recipe != null)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: context.accentCaramel.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        'Reçete',
+                        'Recipe',
                         style: TextStyle(
                           color: context.accentCaramel,
                           fontSize: 11,
@@ -395,7 +421,6 @@ class _TimerScreenState extends State<TimerScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Dairesel Zamanlayıcı
             Center(
               child: _CircularTimer(
                 progress: progress,
@@ -405,20 +430,19 @@ class _TimerScreenState extends State<TimerScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Kontrol Düğmeleri
             Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _RoundBtn(
                     icon: Icons.refresh,
-                    tooltip: 'Sıfırla',
+                    tooltip: 'Reset',
                     onTap: _reset,
                   ),
                   const SizedBox(width: 20),
                   _RoundBtn(
                     icon: _running ? Icons.pause : Icons.play_arrow,
-                    tooltip: _running ? 'Durdur' : 'Başlat',
+                    tooltip: _running ? 'Pause' : 'Start',
                     primary: true,
                     onTap: _toggle,
                   ),
@@ -432,7 +456,6 @@ class _TimerScreenState extends State<TimerScreen> {
               ),
             ),
 
-            // Tamamlanma Kutlaması ve Günlüğe Kaydet Butonu
             if (_finished) ...[
               const SizedBox(height: 24),
               Container(
@@ -455,7 +478,7 @@ class _TimerScreenState extends State<TimerScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Demleme Tamamlandı!',
+                                'Brewing complete!',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 16,
@@ -463,7 +486,7 @@ class _TimerScreenState extends State<TimerScreen> {
                                 ),
                               ),
                               Text(
-                                'Bu demlemenin sonucunu ve puanını kaydet.',
+                                'Save the result and rating for this brew.',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: context.textSecondary,
@@ -480,7 +503,7 @@ class _TimerScreenState extends State<TimerScreen> {
                       child: FilledButton.icon(
                         onPressed: _openSaveLogSheet,
                         icon: const Icon(Icons.rate_review_outlined, size: 18),
-                        label: const Text('Demlemeyi Günlüğe Kaydet'),
+                        label: const Text('Save brew to journal'),
                         style: FilledButton.styleFrom(
                           backgroundColor: context.statusSuccess,
                           foregroundColor: Colors.white,
@@ -497,7 +520,7 @@ class _TimerScreenState extends State<TimerScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Adımlar',
+                  'Steps',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -508,7 +531,7 @@ class _TimerScreenState extends State<TimerScreen> {
                   TextButton.icon(
                     onPressed: _openSaveLogSheet,
                     icon: const Icon(Icons.bookmark_add_outlined, size: 16),
-                    label: const Text('Günlüğe Ekle'),
+                    label: const Text('Add to journal'),
                     style: TextButton.styleFrom(
                       foregroundColor: context.accentCoffee,
                     ),
@@ -578,7 +601,7 @@ class _CircularTimer extends StatelessWidget {
                 ),
               const SizedBox(height: 6),
               Text(
-                finished ? 'Demleme tamam!' : 'kalan süre',
+                finished ? 'Brew complete!' : 'time remaining',
                 style: TextStyle(fontSize: 14, color: context.accentCoffee),
               ),
             ],
@@ -642,8 +665,8 @@ class _TimerStepTile extends StatelessWidget {
     final Color ringColor = active
         ? context.accentCaramel
         : done
-            ? context.statusSuccess
-            : context.borderLatte;
+        ? context.statusSuccess
+        : context.borderLatte;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -661,10 +684,7 @@ class _TimerStepTile extends StatelessWidget {
           Container(
             width: 28,
             height: 28,
-            decoration: BoxDecoration(
-              color: ringColor,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: ringColor, shape: BoxShape.circle),
             alignment: Alignment.center,
             child: done
                 ? const Icon(Icons.check, size: 16, color: Colors.white)

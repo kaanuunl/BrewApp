@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../screens/help_legal_screen.dart';
+import '../screens/grinder_calibration_screen.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 
-/// Veri yedekleme, geri yükleme ve tema ayarları modal penceresi.
 class DataManagementSheet extends StatefulWidget {
   const DataManagementSheet({super.key});
 
@@ -41,7 +42,7 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '${state.recipes.length} reçete ve ${state.logs.length} günlük kaydı panoya kopyalandı! 📋',
+          'Copied ${state.recipes.length} recipes and ${state.logs.length} journal entries to the clipboard! 📋',
         ),
       ),
     );
@@ -53,9 +54,9 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
       setState(() => _jsonCtrl.text = data.text!);
     } else {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Panoda metin bulunamadı.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No text found on the clipboard.')));
     }
   }
 
@@ -63,7 +64,7 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
     final text = _jsonCtrl.text.trim();
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen yedek JSON verisini yapıştırın.')),
+        const SnackBar(content: Text('Paste backup JSON data first.')),
       );
       return;
     }
@@ -72,12 +73,53 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
     if (success) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Yedek başarıyla içe aktarıldı! 🎉')),
+        const SnackBar(content: Text('Backup restored successfully! 🎉')),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Hata: Geçersiz yedek JSON biçimi.'),
+          content: Text('Error: Invalid backup JSON format.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmClearLocalData(AppState state) async {
+    final shouldClear = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete data on this device?'),
+        content: const Text(
+          'Saved recipes, brew journal entries, and theme preference will be permanently deleted. Previously created backups must be deleted separately.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete data'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldClear != true || !mounted) return;
+
+    try {
+      await state.clearLocalData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('App data on this device was deleted.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not delete data: $error'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -108,7 +150,11 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
                     color: context.containerMilk,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(Icons.tune, color: context.accentCoffee, size: 24),
+                  child: Icon(
+                    Icons.tune,
+                    color: context.accentCoffee,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -116,7 +162,7 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Ayarlar & Veri',
+                        'Settings and Data',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -124,7 +170,7 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
                         ),
                       ),
                       Text(
-                        'Tema ve veri yedekleme',
+                        'Theme and data backups',
                         style: TextStyle(
                           fontSize: 13,
                           color: context.textSecondary,
@@ -141,7 +187,7 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
             ),
             const SizedBox(height: 22),
             Text(
-              'Görünüm Teması',
+              'Appearance theme',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -153,26 +199,63 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
               segments: const [
                 ButtonSegment(
                   value: ThemeMode.system,
-                  label: Text('Sistem'),
+                  label: Text('System'),
                   icon: Icon(Icons.brightness_auto_outlined),
                 ),
                 ButtonSegment(
                   value: ThemeMode.light,
-                  label: Text('Krem'),
+                  label: Text('Light'),
                   icon: Icon(Icons.light_mode_outlined),
                 ),
                 ButtonSegment(
                   value: ThemeMode.dark,
-                  label: Text('Espresso'),
+                  label: Text('Dark'),
                   icon: Icon(Icons.dark_mode_outlined),
                 ),
               ],
               selected: {state.themeMode},
               onSelectionChanged: (s) => state.setThemeMode(s.first),
             ),
+            const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.help_outline, color: context.accentCoffee),
+                title: const Text('Help and legal information'),
+                subtitle: const Text('FAQ, privacy, and terms of use'),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  color: context.accentCoffee,
+                ),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const HelpLegalScreen(),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.tune, color: context.accentCoffee),
+                title: const Text('Grinder calibration'),
+                subtitle: Text(
+                  state.grinderCalibration?.grinderName ??
+                      'Grinder profile and method settings',
+                ),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  color: context.accentCoffee,
+                ),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const GrinderCalibrationScreen(),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
             Text(
-              'Veri Yönetimi',
+              'Data management',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -181,7 +264,7 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Kayıtlı reçeteler ve günlük kayıtları cihazında saklanır.',
+              'Saved recipes and journal entries are stored on your device.',
               style: TextStyle(fontSize: 13, color: context.textSecondary),
             ),
             const SizedBox(height: 12),
@@ -199,7 +282,7 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
                       Icon(Icons.coffee, color: context.accentCoffee, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        '${state.recipes.length} reçete  •  ${state.logs.length} demleme kaydı',
+                        '${state.recipes.length} recipes  •  ${state.logs.length} brew entries',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
@@ -215,7 +298,7 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
                         child: OutlinedButton.icon(
                           onPressed: () => _copyBackup(state),
                           icon: const Icon(Icons.copy, size: 18),
-                          label: const Text('Yedek Al'),
+                          label: const Text('Back up'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: context.accentCoffee,
                             side: BorderSide(color: context.borderLatte),
@@ -235,7 +318,7 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
                             _importMode ? Icons.close : Icons.download,
                             size: 18,
                           ),
-                          label: Text(_importMode ? 'Kapat' : 'Geri Yükle'),
+                          label: Text(_importMode ? 'Close' : 'Restore'),
                           style: FilledButton.styleFrom(
                             backgroundColor: context.containerMilk,
                             foregroundColor: context.textPrimary,
@@ -253,11 +336,14 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
                     TextField(
                       controller: _jsonCtrl,
                       maxLines: 4,
-                      style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                      ),
                       decoration: InputDecoration(
-                        hintText: 'Yedek JSON verisini buraya yapıştırın...',
+                        hintText: 'Paste backup JSON data here...',
                         suffixIcon: IconButton(
-                          tooltip: 'Panodan Yapıştır',
+                          tooltip: 'Paste from clipboard',
                           icon: const Icon(Icons.paste),
                           onPressed: _pasteFromClipboard,
                         ),
@@ -269,11 +355,30 @@ class _DataManagementSheetState extends State<DataManagementSheet> {
                       child: FilledButton.icon(
                         onPressed: () => _importBackup(state),
                         icon: const Icon(Icons.check, size: 18),
-                        label: const Text('Yedekten Yükle'),
+                        label: const Text('Restore from backup'),
                       ),
                     ),
                   ],
                 ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _confirmClearLocalData(state),
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Delete data on this device'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                  side: BorderSide(
+                    color: AppColors.error.withValues(alpha: 0.5),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
             ),
           ],

@@ -7,9 +7,9 @@ import '../models/coffee_recipe.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../widgets/animated_entry.dart';
 import '../widgets/app_header.dart';
 
-/// Kullanıcının kaydettiği özel reçeteler.
 class RecipesScreen extends StatelessWidget {
   const RecipesScreen({super.key});
 
@@ -17,6 +17,7 @@ class RecipesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final recipes = state.recipes;
+    final active = state.activeTabIndex == AppState.recipesTabIndex;
 
     return Scaffold(
       floatingActionButton: FloatingActionButton(
@@ -36,10 +37,10 @@ class RecipesScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppHeader(
-                    title: 'Reçetelerim',
+                    title: 'My recipes',
                     subtitle: recipes.isEmpty
-                        ? 'Henüz reçete yok. + ile yeni bir reçete ekle.'
-                        : '${recipes.length} kayıtlı özel reçete',
+                        ? 'No recipes yet. Tap + to add one.'
+                        : '${recipes.length} saved recipes',
                   ),
                 ],
               ),
@@ -51,8 +52,12 @@ class RecipesScreen extends StatelessWidget {
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 90),
                       itemCount: recipes.length,
-                      itemBuilder: (context, i) =>
-                          _RecipeCard(recipe: recipes[i]),
+                      itemBuilder: (context, i) => AnimatedEntry(
+                        key: ValueKey(recipes[i].id),
+                        index: i,
+                        active: active,
+                        child: _RecipeCard(recipe: recipes[i]),
+                      ),
                     ),
             ),
           ],
@@ -89,12 +94,15 @@ class _EmptyState extends StatelessWidget {
               color: context.containerMilk,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.bookmark_border,
-                size: 44, color: context.accentCoffee),
+            child: Icon(
+              Icons.bookmark_border,
+              size: 44,
+              color: context.accentCoffee,
+            ),
           ),
           const SizedBox(height: 16),
           Text(
-            'Reçeten yok',
+            'No recipes yet',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -103,7 +111,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Özel kahve tariflerini buradan kaydet',
+            'Save your custom coffee recipes here',
             style: TextStyle(color: context.textSecondary),
           ),
         ],
@@ -117,21 +125,25 @@ class _RecipeCard extends StatelessWidget {
   final CoffeeRecipe recipe;
 
   void _shareRecipe(BuildContext context) {
-    final text = '☕ *${recipe.name}* — ${recipe.methodName}\n'
-        '⚖️ Kahve: ${fmtNum(recipe.coffeeGrams)} g | Su: ${fmtNum(recipe.waterMl)} ml (${fmtRatio(recipe.ratio)})\n'
-        '🌡️ Sıcaklık: ${recipe.waterTempC}°C | ⏱️ Süre: ${fmtLongDuration(recipe.totalTimeSeconds)}\n'
-        '⚙️ Öğütüm: ${recipe.grindSize}\n'
-        '${recipe.notes.isNotEmpty ? "📝 Notlar: ${recipe.notes}\n" : ""}'
-        '— Barista Brew ile hazırlandı ☕';
+    final method = BrewMethodsData.byName(recipe.methodName);
+    final text =
+        '☕ *${recipe.name}* — ${method.name}\n'
+        '⚖️ Coffee: ${fmtNum(recipe.coffeeGrams)} g | ${method.ratioOutputLabel}: ${fmtNum(recipe.waterMl)} ${method.ratioOutputUnit} (${fmtRatio(recipe.ratio)})\n'
+        '🌡️ Temperature: ${recipe.waterTempC}°C | ⏱️ Time: ${fmtLongDuration(recipe.totalTimeSeconds)}\n'
+        '⚙️ Grind: ${recipe.grindSize}\n'
+        '${recipe.notes.isNotEmpty ? "📝 Notes: ${recipe.notes}\n" : ""}'
+        '— Made with Brew App ☕';
 
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Reçete panoya kopyalandı! 📋')),
+      const SnackBar(content: Text('Recipe copied to clipboard! 📋')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final method = BrewMethodsData.byName(recipe.methodName);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -152,9 +164,12 @@ class _RecipeCard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Bu reçeteyle demle',
-                  icon: Icon(Icons.play_circle_fill,
-                      color: context.accentCaramel, size: 28),
+                  tooltip: 'Brew this recipe',
+                  icon: Icon(
+                    Icons.play_circle_fill,
+                    color: context.accentCaramel,
+                    size: 28,
+                  ),
                   onPressed: () =>
                       context.read<AppState>().startTimerWithRecipe(recipe),
                 ),
@@ -178,7 +193,7 @@ class _RecipeCard extends StatelessWidget {
                         children: [
                           Icon(Icons.timer_outlined, size: 18),
                           SizedBox(width: 8),
-                          Text('Zamanlayıcıda Demle'),
+                          Text('Brew with timer'),
                         ],
                       ),
                     ),
@@ -188,7 +203,7 @@ class _RecipeCard extends StatelessWidget {
                         children: [
                           Icon(Icons.share_outlined, size: 18),
                           SizedBox(width: 8),
-                          Text('Reçeteyi Paylaş'),
+                          Text('Share recipe'),
                         ],
                       ),
                     ),
@@ -198,7 +213,7 @@ class _RecipeCard extends StatelessWidget {
                         children: [
                           Icon(Icons.edit_outlined, size: 18),
                           SizedBox(width: 8),
-                          Text('Düzenle'),
+                          Text('Edit'),
                         ],
                       ),
                     ),
@@ -206,10 +221,13 @@ class _RecipeCard extends StatelessWidget {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_outline,
-                              size: 18, color: AppColors.error),
+                          Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: AppColors.error,
+                          ),
                           SizedBox(width: 8),
-                          Text('Sil', style: TextStyle(color: AppColors.error)),
+                          Text('Delete', style: TextStyle(color: AppColors.error)),
                         ],
                       ),
                     ),
@@ -219,7 +237,7 @@ class _RecipeCard extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              recipe.methodName,
+              method.name,
               style: TextStyle(color: context.accentCoffee, fontSize: 13),
             ),
             const SizedBox(height: 12),
@@ -227,12 +245,13 @@ class _RecipeCard extends StatelessWidget {
               children: [
                 _Pill(
                   bg: context.containerMilk,
-                  value: '${fmtNum(recipe.coffeeGrams)} g kahve',
+                  value: '${fmtNum(recipe.coffeeGrams)} g coffee',
                 ),
                 const SizedBox(width: 8),
                 _Pill(
                   bg: context.containerMilk,
-                  value: '${fmtNum(recipe.waterMl)} ml su',
+                  value:
+                      '${fmtNum(recipe.waterMl)} ${method.ratioOutputUnit} ${method.ratioOutputLabel.toLowerCase()}',
                 ),
               ],
             ),
@@ -254,6 +273,11 @@ class _RecipeCard extends StatelessWidget {
                   value: fmtLongDuration(recipe.totalTimeSeconds),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Grind: ${recipe.grindSize}',
+              style: TextStyle(fontSize: 13, color: context.textSecondary),
             ),
             if (recipe.notes.isNotEmpty) ...[
               const SizedBox(height: 10),
@@ -298,7 +322,6 @@ class _Pill extends StatelessWidget {
   }
 }
 
-/// Yeni reçete eklemek / düzenlemek için form.
 class RecipeFormSheet extends StatefulWidget {
   const RecipeFormSheet({
     super.key,
@@ -322,7 +345,7 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
   late final TextEditingController _tempCtrl;
   late final TextEditingController _timeCtrl;
   late final TextEditingController _notesCtrl;
-  String _methodId = BrewMethodsData.all.first.id;
+  String _methodId = 'v60';
 
   bool get _isEdit => widget.existing != null;
 
@@ -340,21 +363,25 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
     _nameCtrl = TextEditingController(text: e?.name ?? '');
     _coffeeCtrl = TextEditingController(text: initCoffee);
     _ratioCtrl = TextEditingController(text: initRatio);
-    _tempCtrl =
-        TextEditingController(text: e != null ? '${e.waterTempC}' : '93');
+    _tempCtrl = TextEditingController(
+      text: e != null
+          ? '${e.waterTempC}'
+          : '${BrewMethodsData.byId(_methodId).waterTempC}',
+    );
     _timeCtrl = TextEditingController(
-        text: e != null ? '${e.totalTimeSeconds}' : '180');
+      text: e != null ? '${e.totalTimeSeconds}' : '180',
+    );
     _notesCtrl = TextEditingController(text: e?.notes ?? '');
 
     if (e != null) {
-      _methodId = BrewMethodsData.all.any((m) => m.name == e.methodName)
-          ? BrewMethodsData.all.firstWhere((m) => m.name == e.methodName).id
-          : BrewMethodsData.all.first.id;
+      _methodId = BrewMethodsData.byName(e.methodName).id;
     } else if (widget.initialRatio != null) {
-      final matching = BrewMethodsData.all.firstWhere(
-        (m) => (m.ratio - widget.initialRatio!).abs() < 0.5,
-        orElse: () => BrewMethodsData.byId('v60'),
-      );
+      final matching = BrewMethodsData.all
+          .where((m) => m.id != 'espresso')
+          .firstWhere(
+            (m) => (m.ratio - widget.initialRatio!).abs() < 0.5,
+            orElse: () => BrewMethodsData.byId('v60'),
+          );
       _methodId = matching.id;
     }
   }
@@ -378,20 +405,28 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
   void _save() {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty || _coffee <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Lütfen bir isim ve geçerli kahve miktarı gir.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter a name and a valid coffee amount.'),
+        ),
+      );
       return;
     }
     final method = BrewMethodsData.byId(_methodId);
+    final appState = context.read<AppState>();
+    final calibratedGrind = appState.calibratedGrindFor(method.id);
     final recipe = CoffeeRecipe(
-      id: widget.existing?.id ??
+      id:
+          widget.existing?.id ??
           DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
       methodName: method.name,
       coffeeGrams: _coffee,
-      waterMl: _coffee * _ratio,
+      waterMl: method.outputForCoffee(_coffee),
       ratio: _ratio,
-      grindSize: method.grindSize,
+      grindSize: calibratedGrind == null
+          ? method.grindSize
+          : '$calibratedGrind ${appState.grinderCalibration?.unit ?? 'clicks'}',
       waterTempC: int.tryParse(_tempCtrl.text) ?? method.waterTempC,
       totalTimeSeconds: int.tryParse(_timeCtrl.text) ?? method.totalTimeSeconds,
       notes: _notesCtrl.text.trim(),
@@ -409,8 +444,8 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
   @override
   Widget build(BuildContext context) {
     final coffee = _coffee;
-    final ratio = _ratio;
-    final water = coffee * ratio;
+    final method = BrewMethodsData.byId(_methodId);
+    final output = method.outputForCoffee(coffee);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -428,7 +463,7 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
               children: [
                 Expanded(
                   child: Text(
-                    _isEdit ? 'Reçeteyi Düzenle' : 'Yeni Reçete',
+                    _isEdit ? 'Edit recipe' : 'New recipe',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
@@ -446,14 +481,14 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
             TextField(
               controller: _nameCtrl,
               decoration: const InputDecoration(
-                labelText: 'Reçete adı',
-                hintText: 'Örn. Sabah V60’ı',
+                labelText: 'Recipe name',
+                hintText: 'For example, morning V60',
               ),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _methodId,
-              decoration: const InputDecoration(labelText: 'Yöntem'),
+              decoration: const InputDecoration(labelText: 'Method'),
               items: [
                 for (final m in BrewMethodsData.all)
                   DropdownMenuItem(value: m.id, child: Text(m.name)),
@@ -475,10 +510,13 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
                 Expanded(
                   child: TextField(
                     controller: _coffeeCtrl,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(
-                        labelText: 'Kahve (g)', suffixText: 'g'),
+                      labelText: 'Coffee (g)',
+                      suffixText: 'g',
+                    ),
                     onChanged: (_) => setState(() {}),
                   ),
                 ),
@@ -486,10 +524,13 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
                 Expanded(
                   child: TextField(
                     controller: _ratioCtrl,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(
-                        labelText: 'Oran', suffixText: '1:X'),
+                      labelText: 'Oran',
+                      suffixText: '1:X',
+                    ),
                     onChanged: (_) => setState(() {}),
                   ),
                 ),
@@ -502,8 +543,9 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
                   child: TextField(
                     controller: _tempCtrl,
                     keyboardType: TextInputType.number,
-                    decoration:
-                        const InputDecoration(labelText: 'Sıcaklık (°C)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Temperature (°C)',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -511,7 +553,7 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
                   child: TextField(
                     controller: _timeCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Süre (sn)'),
+                    decoration: const InputDecoration(labelText: 'Time (seconds)'),
                   ),
                 ),
               ],
@@ -521,8 +563,8 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
               controller: _notesCtrl,
               maxLines: 2,
               decoration: const InputDecoration(
-                labelText: 'Notlar (opsiyonel)',
-                hintText: 'Öğütüm inceliği, tat notları…',
+                labelText: 'Notes (optional)',
+                hintText: 'Grind size, tasting notes…',
               ),
             ),
             const SizedBox(height: 16),
@@ -536,10 +578,12 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
                 children: [
                   Icon(Icons.water_drop, color: context.accentCoffee),
                   const SizedBox(width: 10),
-                  Text('Tahmini su: ',
-                      style: TextStyle(color: context.accentCoffee)),
                   Text(
-                    '${fmtNum(water)} ml',
+                    '${method.ratioOutputLabel}: ',
+                    style: TextStyle(color: context.accentCoffee),
+                  ),
+                  Text(
+                    '${fmtNum(output)} ${method.ratioOutputUnit}',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       color: context.textPrimary,
@@ -553,7 +597,7 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: _save,
-                child: Text(_isEdit ? 'Kaydet' : 'Reçeteyi Ekle'),
+                child: Text(_isEdit ? 'Save' : 'Add recipe'),
               ),
             ),
           ],
@@ -563,7 +607,6 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
   }
 }
 
-/// Reçete düzenlemeyi köprüden çağırmak için küçük yardımcı.
 class RecetasScreenBridge {
   static void openForm(BuildContext context, CoffeeRecipe recipe) {
     showModalBottomSheet(

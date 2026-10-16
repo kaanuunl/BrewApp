@@ -6,16 +6,19 @@ import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 
-/// Bir yöntemin detay sayfası: parametreler, adımlar ve püf noktaları.
 class MethodDetailScreen extends StatelessWidget {
   const MethodDetailScreen({super.key, required this.method});
   final BrewMethod method;
 
   @override
   Widget build(BuildContext context) {
-    final water = method.waterForCoffee(method.defaultCoffeeGrams);
-    final totalStepsSeconds =
-        method.steps.fold<int>(0, (sum, s) => sum + (s.durationSeconds ?? 0));
+    final appState = context.watch<AppState>();
+    final calibratedGrind = appState.calibratedGrindFor(method.id);
+    final output = method.outputForCoffee(method.defaultCoffeeGrams);
+    final totalStepsSeconds = method.steps.fold<int>(
+      0,
+      (sum, s) => sum + (s.durationSeconds ?? 0),
+    );
 
     return Scaffold(
       appBar: AppBar(title: Text(method.name)),
@@ -32,6 +35,23 @@ class MethodDetailScreen extends StatelessWidget {
               color: context.textPrimary.withValues(alpha: 0.9),
             ),
           ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: context.containerMilk,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: context.borderLatte),
+            ),
+            child: Text(
+              'This profile is a repeatable starting recipe. Adjust grind, ratio, and time based on the coffee, its freshness, your water, equipment, and tasting results.',
+              style: TextStyle(
+                color: context.textPrimary,
+                height: 1.4,
+                fontSize: 13,
+              ),
+            ),
+          ),
           const SizedBox(height: 18),
           Row(
             children: [
@@ -42,30 +62,34 @@ class MethodDetailScreen extends StatelessWidget {
                     Navigator.of(context).pop();
                   },
                   icon: const Icon(Icons.timer_outlined, size: 18),
-                  label: const Text('Zamanlayıcıyı Başlat'),
+                  label: const Text('Start timer'),
                 ),
               ),
-              const SizedBox(width: 10),
-              OutlinedButton.icon(
-                onPressed: () {
-                  context.read<AppState>().openCalculatorWith(
-                        ratio: method.ratio,
-                        coffee: method.defaultCoffeeGrams,
-                      );
-                  Navigator.of(context).pop();
-                },
-                icon: const Icon(Icons.calculate_outlined, size: 18),
-                label: const Text('Hesapla'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: context.accentCoffee,
-                  side: BorderSide(color: context.borderLatte),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              if (method.id != 'espresso') ...[
+                const SizedBox(width: 10),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    context.read<AppState>().openCalculatorWith(
+                      ratio: method.ratio,
+                      coffee: method.defaultCoffeeGrams,
+                    );
+                    Navigator.of(context).pop();
+                  },
+                  icon: const Icon(Icons.calculate_outlined, size: 18),
+                  label: const Text('Calculate'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: context.accentCoffee,
+                    side: BorderSide(color: context.borderLatte),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 20),
@@ -73,14 +97,18 @@ class MethodDetailScreen extends StatelessWidget {
             children: [
               _StatTile(
                 icon: Icons.scale_outlined,
-                label: 'Oran',
+                label: 'Ratio',
                 value: fmtRatio(method.ratio),
               ),
               const SizedBox(width: 10),
               _StatTile(
                 icon: Icons.grain_outlined,
-                label: 'Öğütüm',
-                value: method.grindSize.split(' ').first,
+                label: calibratedGrind == null
+                    ? 'Grind'
+                    : 'Grinder setting',
+                value: calibratedGrind == null
+                    ? method.grindSize
+                    : '$calibratedGrind ${appState.grinderCalibration?.unit ?? 'clicks'}',
               ),
             ],
           ),
@@ -89,19 +117,19 @@ class MethodDetailScreen extends StatelessWidget {
             children: [
               _StatTile(
                 icon: Icons.thermostat_outlined,
-                label: 'Su sıcaklığı',
+                label: 'Water temperature',
                 value: '${method.waterTempC}°C',
               ),
               const SizedBox(width: 10),
               _StatTile(
                 icon: Icons.timer_outlined,
-                label: 'Toplam süre',
+                label: 'Total time',
                 value: fmtLongDuration(method.totalTimeSeconds),
               ),
             ],
           ),
           const SizedBox(height: 24),
-          _SectionTitle('Varsayılan ölçü', color: context.textPrimary),
+          _SectionTitle('Default recipe', color: context.textPrimary),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(18),
@@ -113,21 +141,22 @@ class MethodDetailScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: _KeyValue(
-                      'Kahve', '${fmtNum(method.defaultCoffeeGrams)} g'),
+                    'Coffee',
+                    '${fmtNum(method.defaultCoffeeGrams)} g',
+                  ),
                 ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: context.borderLatte,
-                ),
+                Container(width: 1, height: 40, color: context.borderLatte),
                 Expanded(
-                  child: _KeyValue('Su', '${fmtNum(water)} ml'),
+                  child: _KeyValue(
+                    method.ratioOutputLabel,
+                    '${fmtNum(output)} ${method.ratioOutputUnit}',
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          _SectionTitle('Adımlar', color: context.textPrimary),
+          _SectionTitle('Steps', color: context.textPrimary),
           const SizedBox(height: 10),
           for (var i = 0; i < method.steps.length; i++)
             _StepTile(
@@ -138,12 +167,12 @@ class MethodDetailScreen extends StatelessWidget {
           if (totalStepsSeconds > 0) ...[
             const SizedBox(height: 8),
             Text(
-              'Adım süreleri toplamı: ${fmtLongDuration(totalStepsSeconds)}',
+              'Total step time: ${fmtLongDuration(totalStepsSeconds)}',
               style: TextStyle(fontSize: 13, color: context.textSecondary),
             ),
           ],
           const SizedBox(height: 24),
-          _SectionTitle('Püf noktaları', color: context.textPrimary),
+          _SectionTitle('Tips', color: context.textPrimary),
           const SizedBox(height: 10),
           for (final tip in method.tips)
             Padding(
@@ -153,8 +182,11 @@ class MethodDetailScreen extends StatelessWidget {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 3),
-                    child: Icon(Icons.verified_outlined,
-                        size: 18, color: context.accentCaramel),
+                    child: Icon(
+                      Icons.verified_outlined,
+                      size: 18,
+                      color: context.accentCaramel,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -212,8 +244,10 @@ class _Hero extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: context.containerMilk,
                   borderRadius: BorderRadius.circular(10),
@@ -244,11 +278,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w800,
-        color: color,
-      ),
+      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color),
     );
   }
 }
@@ -285,6 +315,8 @@ class _StatTile extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,

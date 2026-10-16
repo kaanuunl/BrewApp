@@ -1,18 +1,14 @@
-import java.io.FileInputStream
 import java.util.Properties
 
 plugins {
     id("com.android.application")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Release imza anahtarı bilgileri (android/key.properties).
-// Bu dosya .gitignore içindedir ve gizli tutulmalıdır.
 val keystoreProperties = Properties()
 val keystorePropertiesFile: File = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    keystorePropertiesFile.inputStream().use(keystoreProperties::load)
 }
 
 android {
@@ -36,20 +32,54 @@ android {
     signingConfigs {
         create("release") {
             if (keystorePropertiesFile.exists()) {
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties.getProperty("keyAlias").orEmpty()
+                keyPassword = keystoreProperties.getProperty("keyPassword").orEmpty()
+                storeFile = file(keystoreProperties.getProperty("storeFile").orEmpty())
+                storePassword = keystoreProperties.getProperty("storePassword").orEmpty()
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+}
+
+tasks.configureEach {
+    if (
+        name == "validateSigningRelease" ||
+        name == "packageRelease" ||
+        name == "signReleaseBundle" ||
+        name == "assembleRelease" ||
+        name == "bundleRelease"
+    ) {
+        doFirst {
+            if (!keystorePropertiesFile.isFile) {
+                throw GradleException(
+                    "Release signing is not configured. Add android/key.properties and a production keystore."
+                )
+            }
+
+            val requiredProperties = listOf(
+                "keyAlias",
+                "keyPassword",
+                "storeFile",
+                "storePassword",
+            )
+            val missingProperties = requiredProperties.filter {
+                keystoreProperties.getProperty(it).isNullOrBlank()
+            }
+            if (missingProperties.isNotEmpty()) {
+                throw GradleException(
+                    "Release signing is incomplete. Set: ${missingProperties.joinToString(", ")}."
+                )
+            }
+
+            val configuredKeystore = file(keystoreProperties.getProperty("storeFile"))
+            if (!configuredKeystore.isFile) {
+                throw GradleException("The configured release keystore does not exist.")
             }
         }
     }

@@ -1,15 +1,14 @@
-/// Bir demleme günlüğü kaydı.
 class BrewLogEntry {
   final String id;
   final DateTime date;
   final String methodName;
   final double coffeeGrams;
   final double waterMl;
-  final double ratio; // 1:X
+  final double ratio;
   final String grindSize;
   final int waterTempC;
   final int brewTimeSeconds;
-  final int rating; // 1..5
+  final int rating;
   final String notes;
 
   const BrewLogEntry({

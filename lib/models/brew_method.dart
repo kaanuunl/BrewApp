@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 
-/// Zorluk seviyesi.
 enum Difficulty {
-  kolay('Kolay'),
-  orta('Orta'),
-  zor('İleri');
+  kolay('Easy'),
+  orta('Intermediate'),
+  zor('Advanced');
 
   const Difficulty(this.label);
   final String label;
 }
 
-/// Bir demleme adımı (ör. bloom, ilk döküş, ikinci döküş...).
 class BrewStep {
   final String title;
   final String description;
-  final int? durationSeconds; // null ise süre belirtilmemiş
+  final int? durationSeconds;
 
   const BrewStep({
     required this.title,
@@ -23,14 +21,15 @@ class BrewStep {
   });
 }
 
-/// Bir demleme yöntemi (V60, Chemex, Espresso vb.).
 class BrewMethod {
   final String id;
   final String name;
   final String subtitle;
   final String description;
   final IconData icon;
-  final double ratio; // 1:X  → kahve:su oranı (ör. 16 → 1:16)
+  final double ratio;
+  final String ratioOutputLabel;
+  final String ratioOutputUnit;
   final double defaultCoffeeGrams;
   final String grindSize;
   final int waterTempC;
@@ -47,6 +46,8 @@ class BrewMethod {
     required this.description,
     required this.icon,
     required this.ratio,
+    this.ratioOutputLabel = 'Water',
+    this.ratioOutputUnit = 'ml',
     required this.defaultCoffeeGrams,
     required this.grindSize,
     required this.waterTempC,
@@ -57,9 +58,7 @@ class BrewMethod {
     required this.tips,
   });
 
-  /// Verilen kahve gramajı için su miktarı (ml).
-  double waterForCoffee(double coffee) => coffee * ratio;
+  double outputForCoffee(double coffee) => coffee * ratio;
 
-  /// Verilen su miktarı (ml) için kahve gramajı.
-  double coffeeForWater(double water) => water / ratio;
+  double coffeeForOutput(double output) => output / ratio;
 }

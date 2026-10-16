@@ -12,6 +12,22 @@
 .swiftpm/
 migrate_working_dir/
 
+# Local secrets and signing credentials
+/android/key.properties
+/android/local.properties
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+AuthKey_*.p8
+*.keystore
+*.jks
+
 # IntelliJ related
 *.iml
 *.ipr

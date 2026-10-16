@@ -6,9 +6,9 @@ import '../models/brew_log.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../widgets/animated_entry.dart';
 import '../widgets/app_header.dart';
 
-/// Demleme günlüğü: kayıtlar, istatistikler ve son 7 gün grafiği.
 class JournalScreen extends StatelessWidget {
   const JournalScreen({super.key});
 
@@ -16,10 +16,12 @@ class JournalScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final logs = state.logs;
+    final active = state.activeTabIndex == AppState.journalTabIndex;
 
     final total = logs.length;
-    final avgRating =
-        total == 0 ? 0.0 : logs.fold<int>(0, (s, l) => s + l.rating) / total;
+    final avgRating = total == 0
+        ? 0.0
+        : logs.fold<int>(0, (s, l) => s + l.rating) / total;
     final totalCoffee = logs.fold<double>(0, (s, l) => s + l.coffeeGrams);
 
     return Scaffold(
@@ -37,8 +39,8 @@ class JournalScreen extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: AppHeader(
-                title: 'Demleme Günlüğü',
-                subtitle: 'Her demlemeyi kaydet, gelişimini izle',
+                title: 'Brew Journal',
+                subtitle: 'Record each brew and track your progress',
               ),
             ),
             const SizedBox(height: 16),
@@ -47,16 +49,16 @@ class JournalScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
-                    _StatCard(label: 'Demleme', value: '$total', emoji: '☕'),
+                    _StatCard(label: 'Brews', value: '$total', emoji: '☕'),
                     const SizedBox(width: 10),
                     _StatCard(
-                      label: 'Ort. puan',
+                      label: 'Avg. rating',
                       value: total == 0 ? '—' : fmtNum(avgRating),
                       emoji: '⭐',
                     ),
                     const SizedBox(width: 10),
                     _StatCard(
-                      label: 'Toplam kahve',
+                      label: 'Total coffee',
                       value: '${fmtNum(totalCoffee)} g',
                       emoji: '🌱',
                     ),
@@ -76,7 +78,12 @@ class JournalScreen extends StatelessWidget {
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 90),
                       itemCount: logs.length,
-                      itemBuilder: (context, i) => _LogTile(entry: logs[i]),
+                      itemBuilder: (context, i) => AnimatedEntry(
+                        key: ValueKey(logs[i].id),
+                        index: i,
+                        active: active,
+                        child: _LogTile(entry: logs[i]),
+                      ),
                     ),
             ),
           ],
@@ -117,7 +124,7 @@ class _JournalEmpty extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Henüz kayıt yok',
+            'No entries yet',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -126,7 +133,7 @@ class _JournalEmpty extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'İlk demlemeni kaydetmek için + butonuna bas',
+            'Tap + to record your first brew',
             style: TextStyle(color: context.textSecondary),
           ),
         ],
@@ -187,8 +194,11 @@ class _WeeklyChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final days = List.generate(7, (i) {
-      final d = DateTime(now.year, now.month, now.day)
-          .subtract(Duration(days: 6 - i));
+      final d = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(Duration(days: 6 - i));
       return d;
     });
 
@@ -199,8 +209,9 @@ class _WeeklyChart extends StatelessWidget {
       }).length;
     }).toList();
 
-    final maxCount =
-        counts.isEmpty ? 1 : counts.reduce((a, b) => a > b ? a : b).clamp(1, 100);
+    final maxCount = counts.isEmpty
+        ? 1
+        : counts.reduce((a, b) => a > b ? a : b).clamp(1, 100);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -213,7 +224,7 @@ class _WeeklyChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Son 7 gün',
+            'Last 7 days',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -248,8 +259,15 @@ class _WeeklyChart extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
-                            [days[i].weekday - 1],
+                        [
+                          'Mon',
+                          'Tue',
+                          'Wed',
+                          'Thu',
+                          'Fri',
+                          'Sat',
+                          'Sun',
+                        ][days[i].weekday - 1],
                         style: TextStyle(
                           fontSize: 10,
                           color: context.textSecondary,
@@ -272,6 +290,10 @@ class _LogTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final method = BrewMethodsData.maybeByName(entry.methodName);
+    final outputLabel = method?.ratioOutputLabel ?? 'Water';
+    final outputUnit = method?.ratioOutputUnit ?? 'ml';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -283,7 +305,7 @@ class _LogTile extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    entry.methodName,
+                    method?.name ?? entry.methodName,
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
@@ -303,10 +325,13 @@ class _LogTile extends StatelessWidget {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_outline,
-                              size: 18, color: AppColors.error),
+                          Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: AppColors.error,
+                          ),
                           SizedBox(width: 8),
-                          Text('Sil', style: TextStyle(color: AppColors.error)),
+                          Text('Delete', style: TextStyle(color: AppColors.error)),
                         ],
                       ),
                     ),
@@ -319,11 +344,16 @@ class _LogTile extends StatelessWidget {
               fmtDate(entry.date),
               style: TextStyle(color: context.textSecondary, fontSize: 13),
             ),
+            const SizedBox(height: 4),
+            Text(
+              'Grind: ${entry.grindSize}',
+              style: TextStyle(fontSize: 13, color: context.textSecondary),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Text(
-                  '${fmtNum(entry.coffeeGrams)} g → ${fmtNum(entry.waterMl)} ml  •  ${fmtLongDuration(entry.brewTimeSeconds)}',
+                  '${fmtNum(entry.coffeeGrams)} g → ${fmtNum(entry.waterMl)} $outputUnit $outputLabel  •  ${fmtLongDuration(entry.brewTimeSeconds)}',
                   style: TextStyle(fontSize: 13, color: context.textPrimary),
                 ),
                 const Spacer(),
@@ -356,7 +386,6 @@ class _LogTile extends StatelessWidget {
   }
 }
 
-/// Yeni günlük kaydı ekleme formu (ön doldurma destekli).
 class LogFormSheet extends StatefulWidget {
   const LogFormSheet({
     super.key,
@@ -380,7 +409,7 @@ class LogFormSheet extends StatefulWidget {
 }
 
 class _LogFormSheetState extends State<LogFormSheet> {
-  String _methodId = BrewMethodsData.all.first.id;
+  String _methodId = 'v60';
   int _rating = 5;
   late final TextEditingController _coffeeCtrl;
   late final TextEditingController _ratioCtrl;
@@ -391,31 +420,20 @@ class _LogFormSheetState extends State<LogFormSheet> {
   @override
   void initState() {
     super.initState();
-    // Eşleşen yöntemi bul
     if (widget.prefillMethodName != null) {
-      final matching = BrewMethodsData.all.firstWhere(
-        (m) =>
-            m.name.toLowerCase().contains(widget.prefillMethodName!.toLowerCase()) ||
-            widget.prefillMethodName!.toLowerCase().contains(m.name.toLowerCase()),
-        orElse: () => BrewMethodsData.all.first,
-      );
-      _methodId = matching.id;
+      _methodId = BrewMethodsData.byName(widget.prefillMethodName!).id;
     }
 
     _coffeeCtrl = TextEditingController(
-      text: widget.prefillCoffee != null
-          ? fmtNum(widget.prefillCoffee!)
-          : '18',
+      text: widget.prefillCoffee != null ? fmtNum(widget.prefillCoffee!) : '18',
     );
     _ratioCtrl = TextEditingController(
-      text: widget.prefillRatio != null
-          ? fmtNum(widget.prefillRatio!)
-          : '16',
+      text: widget.prefillRatio != null ? fmtNum(widget.prefillRatio!) : '16',
     );
     _tempCtrl = TextEditingController(
       text: widget.prefillTemp != null
           ? '${widget.prefillTemp}'
-          : '93',
+          : '${BrewMethodsData.byId(_methodId).waterTempC}',
     );
     _timeCtrl = TextEditingController(
       text: widget.prefillTimeSeconds != null
@@ -442,34 +460,39 @@ class _LogFormSheetState extends State<LogFormSheet> {
   void _save() {
     if (_coffee <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kahve miktarı geçerli değil.')),
+        const SnackBar(content: Text('Invalid coffee amount.')),
       );
       return;
     }
     final method = BrewMethodsData.byId(_methodId);
+    final appState = context.read<AppState>();
+    final calibratedGrind = appState.calibratedGrindFor(method.id);
     final entry = BrewLogEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       date: DateTime.now(),
-      methodName: widget.prefillMethodName ?? method.name,
+      methodName: method.name,
       coffeeGrams: _coffee,
-      waterMl: _coffee * _ratio,
+      waterMl: method.outputForCoffee(_coffee),
       ratio: _ratio,
-      grindSize: method.grindSize,
+      grindSize: calibratedGrind == null
+          ? method.grindSize
+          : '$calibratedGrind ${appState.grinderCalibration?.unit ?? 'clicks'}',
       waterTempC: int.tryParse(_tempCtrl.text) ?? method.waterTempC,
       brewTimeSeconds: int.tryParse(_timeCtrl.text) ?? method.totalTimeSeconds,
       rating: _rating,
       notes: _notesCtrl.text.trim(),
     );
-    context.read<AppState>().addLog(entry);
+    appState.addLog(entry);
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Demleme günlüğe kaydedildi! ⭐')),
+      const SnackBar(content: Text('Brew saved to journal! ⭐')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final water = _coffee * _ratio;
+    final method = BrewMethodsData.byId(_methodId);
+    final output = method.outputForCoffee(_coffee);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -487,7 +510,7 @@ class _LogFormSheetState extends State<LogFormSheet> {
               children: [
                 Expanded(
                   child: Text(
-                    'Yeni Demleme Kaydı',
+                    'New brew entry',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
@@ -504,7 +527,7 @@ class _LogFormSheetState extends State<LogFormSheet> {
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _methodId,
-              decoration: const InputDecoration(labelText: 'Yöntem'),
+              decoration: const InputDecoration(labelText: 'Method'),
               items: [
                 for (final m in BrewMethodsData.all)
                   DropdownMenuItem(value: m.id, child: Text(m.name)),
@@ -527,9 +550,12 @@ class _LogFormSheetState extends State<LogFormSheet> {
                   child: TextField(
                     controller: _coffeeCtrl,
                     keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(
-                        labelText: 'Kahve (g)', suffixText: 'g'),
+                      labelText: 'Coffee (g)',
+                      suffixText: 'g',
+                    ),
                     onChanged: (_) => setState(() {}),
                   ),
                 ),
@@ -538,9 +564,12 @@ class _LogFormSheetState extends State<LogFormSheet> {
                   child: TextField(
                     controller: _ratioCtrl,
                     keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(
-                        labelText: 'Oran', suffixText: '1:X'),
+                      labelText: 'Oran',
+                      suffixText: '1:X',
+                    ),
                     onChanged: (_) => setState(() {}),
                   ),
                 ),
@@ -553,8 +582,9 @@ class _LogFormSheetState extends State<LogFormSheet> {
                   child: TextField(
                     controller: _tempCtrl,
                     keyboardType: TextInputType.number,
-                    decoration:
-                        const InputDecoration(labelText: 'Sıcaklık (°C)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Temperature (°C)',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -562,14 +592,14 @@ class _LogFormSheetState extends State<LogFormSheet> {
                   child: TextField(
                     controller: _timeCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Süre (sn)'),
+                    decoration: const InputDecoration(labelText: 'Time (seconds)'),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             Text(
-              'Puan',
+              'Rating',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 color: context.textPrimary,
@@ -596,8 +626,8 @@ class _LogFormSheetState extends State<LogFormSheet> {
               controller: _notesCtrl,
               maxLines: 2,
               decoration: const InputDecoration(
-                labelText: 'Notlar (opsiyonel)',
-                hintText: 'Tat, gövde, asidite, neyi değiştirdin?',
+                labelText: 'Notes (optional)',
+                hintText: 'Taste, body, acidity, what did you change?',
               ),
             ),
             const SizedBox(height: 14),
@@ -611,9 +641,12 @@ class _LogFormSheetState extends State<LogFormSheet> {
                 children: [
                   Icon(Icons.water_drop, color: context.accentCoffee),
                   const SizedBox(width: 10),
-                  Text('Su: ', style: TextStyle(color: context.accentCoffee)),
                   Text(
-                    '${fmtNum(water)} ml',
+                    '${method.ratioOutputLabel}: ',
+                    style: TextStyle(color: context.accentCoffee),
+                  ),
+                  Text(
+                    '${fmtNum(output)} ${method.ratioOutputUnit}',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       color: context.textPrimary,
@@ -627,7 +660,7 @@ class _LogFormSheetState extends State<LogFormSheet> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: _save,
-                child: const Text('Kaydı Ekle'),
+                child: const Text('Add entry'),
               ),
             ),
           ],
