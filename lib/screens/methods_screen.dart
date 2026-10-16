@@ -4,6 +4,7 @@ import '../data/brew_methods_data.dart';
 import '../models/brew_method.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../widgets/app_header.dart';
 import 'method_detail_screen.dart';
 
 /// Demleme yöntemleri kütüphanesi.
@@ -36,19 +37,16 @@ class _MethodsScreenState extends State<MethodsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Demleme Yöntemleri',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.espresso)),
-                  const SizedBox(height: 4),
-                  Text('${methods.length} yöntem • oran, öğütüm ve sıcaklık',
-                      style: TextStyle(color: AppColors.coffee)),
-                  const SizedBox(height: 16),
+                  AppHeader(
+                    title: 'Demleme Yöntemleri',
+                    subtitle: '${methods.length} yöntem • oran, öğütüm ve sıcaklık',
+                  ),
+                  const SizedBox(height: 14),
                   TextField(
                     onChanged: (v) => setState(() => _query = v),
-                    decoration: const InputDecoration(
-                      hintText: 'Yöntem ara…',
-                      prefixIcon: Icon(Icons.search, color: AppColors.coffee),
+                    decoration: InputDecoration(
+                      hintText: 'Yöntem veya stil ara…',
+                      prefixIcon: Icon(Icons.search, color: context.accentCoffee),
                     ),
                   ),
                 ],
@@ -59,8 +57,7 @@ class _MethodsScreenState extends State<MethodsScreen> {
               child: ListView.builder(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 itemCount: methods.length,
-                itemBuilder: (context, i) =>
-                    _MethodCard(method: methods[i]),
+                itemBuilder: (context, i) => _MethodCard(method: methods[i]),
               ),
             ),
           ],
@@ -93,10 +90,10 @@ class _MethodCard extends StatelessWidget {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: AppColors.milk,
+                  color: context.containerMilk,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(method.icon, color: AppColors.coffee, size: 28),
+                child: Icon(method.icon, color: context.accentCoffee, size: 28),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -106,33 +103,50 @@ class _MethodCard extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(method.name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w800, fontSize: 16)),
+                          child: Text(
+                            method.name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: context.textPrimary,
+                            ),
+                          ),
                         ),
                         _Badge(label: method.difficulty.label),
                       ],
                     ),
                     const SizedBox(height: 3),
-                    Text(method.subtitle,
-                        style: TextStyle(
-                            color: AppColors.coffee.withValues(alpha: 0.8),
-                            fontSize: 13)),
+                    Text(
+                      method.subtitle,
+                      style: TextStyle(
+                        color: context.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        _Meta(icon: Icons.scale_outlined, text: fmtRatio(method.ratio)),
+                        _Meta(
+                          icon: Icons.scale_outlined,
+                          text: fmtRatio(method.ratio),
+                        ),
                         const SizedBox(width: 14),
-                        _Meta(icon: Icons.thermostat_outlined, text: '${method.waterTempC}°C'),
+                        _Meta(
+                          icon: Icons.thermostat_outlined,
+                          text: '${method.waterTempC}°C',
+                        ),
                         const SizedBox(width: 14),
-                        _Meta(icon: Icons.timer_outlined, text: fmtLongDuration(method.totalTimeSeconds)),
+                        _Meta(
+                          icon: Icons.timer_outlined,
+                          text: fmtLongDuration(method.totalTimeSeconds),
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, color: AppColors.coffee),
+              Icon(Icons.chevron_right, color: context.accentCoffee),
             ],
           ),
         ),
@@ -150,14 +164,17 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.caramel.withValues(alpha: 0.15),
+        color: context.accentCaramel.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(label,
-          style: const TextStyle(
-              color: AppColors.caramel,
-              fontSize: 11,
-              fontWeight: FontWeight.w700)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: context.accentCaramel,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -171,11 +188,12 @@ class _Meta extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: AppColors.coffee),
+        Icon(icon, size: 14, color: context.accentCoffee),
         const SizedBox(width: 4),
-        Text(text,
-            style: const TextStyle(
-                fontSize: 12, color: AppColors.espresso)),
+        Text(
+          text,
+          style: TextStyle(fontSize: 12, color: context.textPrimary),
+        ),
       ],
     );
   }

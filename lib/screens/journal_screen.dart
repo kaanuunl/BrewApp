@@ -6,6 +6,7 @@ import '../models/brew_log.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../widgets/app_header.dart';
 
 /// Demleme günlüğü: kayıtlar, istatistikler ve son 7 gün grafiği.
 class JournalScreen extends StatelessWidget {
@@ -23,7 +24,8 @@ class JournalScreen extends StatelessWidget {
 
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.coffee,
+        heroTag: 'journal_fab',
+        backgroundColor: context.accentCoffee,
         foregroundColor: Colors.white,
         onPressed: () => _openForm(context),
         child: const Icon(Icons.add),
@@ -32,19 +34,11 @@ class JournalScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Demleme Günlüğü',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.espresso)),
-                  const SizedBox(height: 4),
-                  Text('Her demlemeyi kaydet, gelişimini izle',
-                      style: TextStyle(color: AppColors.coffee)),
-                ],
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: AppHeader(
+                title: 'Demleme Günlüğü',
+                subtitle: 'Her demlemeyi kaydet, gelişimini izle',
               ),
             ),
             const SizedBox(height: 16),
@@ -56,14 +50,16 @@ class JournalScreen extends StatelessWidget {
                     _StatCard(label: 'Demleme', value: '$total', emoji: '☕'),
                     const SizedBox(width: 10),
                     _StatCard(
-                        label: 'Ort. puan',
-                        value: total == 0 ? '—' : fmtNum(avgRating),
-                        emoji: '⭐'),
+                      label: 'Ort. puan',
+                      value: total == 0 ? '—' : fmtNum(avgRating),
+                      emoji: '⭐',
+                    ),
                     const SizedBox(width: 10),
                     _StatCard(
-                        label: 'Toplam kahve',
-                        value: '${fmtNum(totalCoffee)} g',
-                        emoji: '🌱'),
+                      label: 'Toplam kahve',
+                      value: '${fmtNum(totalCoffee)} g',
+                      emoji: '🌱',
+                    ),
                   ],
                 ),
               ),
@@ -93,7 +89,7 @@ class JournalScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.cream,
+      backgroundColor: context.bgCream,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -114,21 +110,25 @@ class _JournalEmpty extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.milk,
+              color: context.containerMilk,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.history,
-                size: 44, color: AppColors.coffee),
+            child: Icon(Icons.history, size: 44, color: context.accentCoffee),
           ),
           const SizedBox(height: 16),
-          const Text('Henüz kayıt yok',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.espresso)),
+          Text(
+            'Henüz kayıt yok',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text('İlk demlemeni kaydetmek için + butonuna bas',
-              style: TextStyle(color: AppColors.coffee)),
+          Text(
+            'İlk demlemeni kaydetmek için + butonuna bas',
+            style: TextStyle(color: context.textSecondary),
+          ),
         ],
       ),
     );
@@ -151,22 +151,27 @@ class _StatCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.foam,
+          color: context.cardFoam,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.latte),
+          border: Border.all(color: context.borderLatte),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(emoji, style: const TextStyle(fontSize: 20)),
             const SizedBox(height: 6),
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.espresso)),
-            Text(label,
-                style: const TextStyle(fontSize: 12, color: AppColors.coffee)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: context.textPrimary,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: context.textSecondary),
+            ),
           ],
         ),
       ),
@@ -182,8 +187,8 @@ class _WeeklyChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final days = List.generate(7, (i) {
-      final d = DateTime(now.year, now.month, now.day).subtract(
-          Duration(days: 6 - i));
+      final d = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: 6 - i));
       return d;
     });
 
@@ -194,25 +199,27 @@ class _WeeklyChart extends StatelessWidget {
       }).length;
     }).toList();
 
-    final maxCount = counts.isEmpty
-        ? 1
-        : counts.reduce((a, b) => a > b ? a : b).clamp(1, 100);
+    final maxCount =
+        counts.isEmpty ? 1 : counts.reduce((a, b) => a > b ? a : b).clamp(1, 100);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.foam,
+        color: context.cardFoam,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.latte),
+        border: Border.all(color: context.borderLatte),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Son 7 gün',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.espresso)),
+          Text(
+            'Son 7 gün',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+            ),
+          ),
           const SizedBox(height: 14),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -221,18 +228,21 @@ class _WeeklyChart extends StatelessWidget {
                 Expanded(
                   child: Column(
                     children: [
-                      Text(counts[i] > 0 ? '${counts[i]}' : '',
-                          style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.caramel)),
+                      Text(
+                        counts[i] > 0 ? '${counts[i]}' : '',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: context.accentCaramel,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Container(
                         height: 70 * (counts[i] / maxCount),
                         decoration: BoxDecoration(
                           color: counts[i] > 0
-                              ? AppColors.caramel
-                              : AppColors.milk,
+                              ? context.accentCaramel
+                              : context.containerMilk,
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
@@ -240,8 +250,10 @@ class _WeeklyChart extends StatelessWidget {
                       Text(
                         ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
                             [days[i].weekday - 1],
-                        style: const TextStyle(
-                            fontSize: 10, color: AppColors.coffee),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: context.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -270,33 +282,49 @@ class _LogTile extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(entry.methodName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 16)),
+                  child: Text(
+                    entry.methodName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: context.textPrimary,
+                    ),
+                  ),
                 ),
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: AppColors.coffee),
+                  icon: Icon(Icons.more_vert, color: context.accentCoffee),
                   onSelected: (v) {
                     if (v == 'delete') {
                       context.read<AppState>().deleteLog(entry.id);
                     }
                   },
                   itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'delete', child: Text('Sil')),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline,
+                              size: 18, color: AppColors.error),
+                          SizedBox(width: 8),
+                          Text('Sil', style: TextStyle(color: AppColors.error)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
             const SizedBox(height: 3),
-            Text(fmtDate(entry.date),
-                style: TextStyle(color: AppColors.coffee, fontSize: 13)),
+            Text(
+              fmtDate(entry.date),
+              style: TextStyle(color: context.textSecondary, fontSize: 13),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Text(
-                  '${fmtNum(entry.coffeeGrams)} g → ${fmtNum(entry.waterMl)} ml',
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.espresso),
+                  '${fmtNum(entry.coffeeGrams)} g → ${fmtNum(entry.waterMl)} ml  •  ${fmtLongDuration(entry.brewTimeSeconds)}',
+                  style: TextStyle(fontSize: 13, color: context.textPrimary),
                 ),
                 const Spacer(),
                 for (var i = 0; i < 5; i++)
@@ -304,19 +332,22 @@ class _LogTile extends StatelessWidget {
                     i < entry.rating ? Icons.star : Icons.star_border,
                     size: 16,
                     color: i < entry.rating
-                        ? AppColors.caramel
-                        : AppColors.latte,
+                        ? context.accentCaramel
+                        : context.borderLatte,
                   ),
               ],
             ),
             if (entry.notes.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(entry.notes,
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontStyle: FontStyle.italic,
-                      height: 1.4,
-                      color: AppColors.espresso.withValues(alpha: 0.75))),
+              Text(
+                entry.notes,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                  height: 1.4,
+                  color: context.textPrimary.withValues(alpha: 0.8),
+                ),
+              ),
             ],
           ],
         ),
@@ -325,9 +356,24 @@ class _LogTile extends StatelessWidget {
   }
 }
 
-/// Yeni günlük kaydı ekleme formu.
+/// Yeni günlük kaydı ekleme formu (ön doldurma destekli).
 class LogFormSheet extends StatefulWidget {
-  const LogFormSheet({super.key});
+  const LogFormSheet({
+    super.key,
+    this.prefillMethodName,
+    this.prefillCoffee,
+    this.prefillWater,
+    this.prefillRatio,
+    this.prefillTemp,
+    this.prefillTimeSeconds,
+  });
+
+  final String? prefillMethodName;
+  final double? prefillCoffee;
+  final double? prefillWater;
+  final double? prefillRatio;
+  final int? prefillTemp;
+  final int? prefillTimeSeconds;
 
   @override
   State<LogFormSheet> createState() => _LogFormSheetState();
@@ -335,12 +381,48 @@ class LogFormSheet extends StatefulWidget {
 
 class _LogFormSheetState extends State<LogFormSheet> {
   String _methodId = BrewMethodsData.all.first.id;
-  int _rating = 4;
-  final _coffeeCtrl = TextEditingController(text: '18');
-  final _ratioCtrl = TextEditingController(text: '16');
-  final _tempCtrl = TextEditingController(text: '93');
-  final _timeCtrl = TextEditingController(text: '180');
+  int _rating = 5;
+  late final TextEditingController _coffeeCtrl;
+  late final TextEditingController _ratioCtrl;
+  late final TextEditingController _tempCtrl;
+  late final TextEditingController _timeCtrl;
   final _notesCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Eşleşen yöntemi bul
+    if (widget.prefillMethodName != null) {
+      final matching = BrewMethodsData.all.firstWhere(
+        (m) =>
+            m.name.toLowerCase().contains(widget.prefillMethodName!.toLowerCase()) ||
+            widget.prefillMethodName!.toLowerCase().contains(m.name.toLowerCase()),
+        orElse: () => BrewMethodsData.all.first,
+      );
+      _methodId = matching.id;
+    }
+
+    _coffeeCtrl = TextEditingController(
+      text: widget.prefillCoffee != null
+          ? fmtNum(widget.prefillCoffee!)
+          : '18',
+    );
+    _ratioCtrl = TextEditingController(
+      text: widget.prefillRatio != null
+          ? fmtNum(widget.prefillRatio!)
+          : '16',
+    );
+    _tempCtrl = TextEditingController(
+      text: widget.prefillTemp != null
+          ? '${widget.prefillTemp}'
+          : '93',
+    );
+    _timeCtrl = TextEditingController(
+      text: widget.prefillTimeSeconds != null
+          ? '${widget.prefillTimeSeconds}'
+          : '180',
+    );
+  }
 
   @override
   void dispose() {
@@ -359,15 +441,16 @@ class _LogFormSheetState extends State<LogFormSheet> {
 
   void _save() {
     if (_coffee <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Kahve miktarı geçerli değil.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kahve miktarı geçerli değil.')),
+      );
       return;
     }
     final method = BrewMethodsData.byId(_methodId);
     final entry = BrewLogEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       date: DateTime.now(),
-      methodName: method.name,
+      methodName: widget.prefillMethodName ?? method.name,
       coffeeGrams: _coffee,
       waterMl: _coffee * _ratio,
       ratio: _ratio,
@@ -379,6 +462,9 @@ class _LogFormSheetState extends State<LogFormSheet> {
     );
     context.read<AppState>().addLog(entry);
     Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Demleme günlüğe kaydedildi! ⭐')),
+    );
   }
 
   @override
@@ -399,16 +485,19 @@ class _LogFormSheetState extends State<LogFormSheet> {
           children: [
             Row(
               children: [
-                const Expanded(
-                  child: Text('Yeni Demleme Kaydı',
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.espresso)),
+                Expanded(
+                  child: Text(
+                    'Yeni Demleme Kaydı',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
+                  ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: AppColors.coffee),
+                  icon: Icon(Icons.close, color: context.accentCoffee),
                 ),
               ],
             ),
@@ -479,9 +568,13 @@ class _LogFormSheetState extends State<LogFormSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            const Text('Puan',
-                style: TextStyle(
-                    fontWeight: FontWeight.w700, color: AppColors.espresso)),
+            Text(
+              'Puan',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: context.textPrimary,
+              ),
+            ),
             const SizedBox(height: 6),
             Row(
               children: [
@@ -490,7 +583,9 @@ class _LogFormSheetState extends State<LogFormSheet> {
                     onPressed: () => setState(() => _rating = i),
                     icon: Icon(
                       i <= _rating ? Icons.star : Icons.star_border,
-                      color: i <= _rating ? AppColors.caramel : AppColors.latte,
+                      color: i <= _rating
+                          ? context.accentCaramel
+                          : context.borderLatte,
                       size: 30,
                     ),
                   ),
@@ -501,25 +596,29 @@ class _LogFormSheetState extends State<LogFormSheet> {
               controller: _notesCtrl,
               maxLines: 2,
               decoration: const InputDecoration(
-                  labelText: 'Notlar (opsiyonel)',
-                  hintText: 'Tat, kıvam, neyi değiştirdin?'),
+                labelText: 'Notlar (opsiyonel)',
+                hintText: 'Tat, gövde, asidite, neyi değiştirdin?',
+              ),
             ),
             const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.milk,
+                color: context.containerMilk,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.water_drop, color: AppColors.coffee),
+                  Icon(Icons.water_drop, color: context.accentCoffee),
                   const SizedBox(width: 10),
-                  Text('Su: ', style: TextStyle(color: AppColors.coffee)),
-                  Text('${fmtNum(water)} ml',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.espresso)),
+                  Text('Su: ', style: TextStyle(color: context.accentCoffee)),
+                  Text(
+                    '${fmtNum(water)} ml',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
+                  ),
                 ],
               ),
             ),

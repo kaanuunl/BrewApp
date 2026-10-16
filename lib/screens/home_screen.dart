@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../state/app_state.dart';
 import 'calculator_screen.dart';
 import 'journal_screen.dart';
 import 'methods_screen.dart';
@@ -7,15 +9,8 @@ import 'recipes_screen.dart';
 import 'timer_screen.dart';
 
 /// Uygulamanın ana iskeleti: alt gezinme çubuğu + 5 sekme.
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _index = 0;
 
   static const _screens = [
     CalculatorScreen(),
@@ -27,11 +22,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final activeIndex = context.watch<AppState>().activeTabIndex;
+
     return Scaffold(
-      body: IndexedStack(index: _index, children: _screens),
+      body: IndexedStack(index: activeIndex, children: _screens),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        selectedIndex: activeIndex,
+        onDestinationSelected: (i) => context.read<AppState>().setActiveTab(i),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.calculate_outlined),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../data/brew_methods_data.dart';
@@ -6,6 +7,7 @@ import '../models/coffee_recipe.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../widgets/app_header.dart';
 
 /// Kullanıcının kaydettiği özel reçeteler.
 class RecipesScreen extends StatelessWidget {
@@ -18,7 +20,8 @@ class RecipesScreen extends StatelessWidget {
 
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.coffee,
+        heroTag: 'recipe_fab',
+        backgroundColor: context.accentCoffee,
         foregroundColor: Colors.white,
         onPressed: () => _openForm(context),
         child: const Icon(Icons.add),
@@ -32,16 +35,11 @@ class RecipesScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Reçetelerim',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.espresso)),
-                  const SizedBox(height: 4),
-                  Text(
-                    recipes.isEmpty
+                  AppHeader(
+                    title: 'Reçetelerim',
+                    subtitle: recipes.isEmpty
                         ? 'Henüz reçete yok. + ile yeni bir reçete ekle.'
-                        : '${recipes.length} kayıtlı reçete',
-                    style: TextStyle(color: AppColors.coffee),
+                        : '${recipes.length} kayıtlı özel reçete',
                   ),
                 ],
               ),
@@ -67,7 +65,7 @@ class RecipesScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.cream,
+      backgroundColor: context.bgCream,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -88,19 +86,26 @@ class _EmptyState extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.milk,
+              color: context.containerMilk,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.bookmark_border,
-                size: 44, color: AppColors.coffee),
+            child: Icon(Icons.bookmark_border,
+                size: 44, color: context.accentCoffee),
           ),
           const SizedBox(height: 16),
-          const Text('Reçeten yok',
-              style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.espresso)),
+          Text(
+            'Reçeten yok',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text('Özel kahve tariflerini buradan kaydet',
-              style: TextStyle(color: AppColors.coffee)),
+          Text(
+            'Özel kahve tariflerini buradan kaydet',
+            style: TextStyle(color: context.textSecondary),
+          ),
         ],
       ),
     );
@@ -110,6 +115,20 @@ class _EmptyState extends StatelessWidget {
 class _RecipeCard extends StatelessWidget {
   const _RecipeCard({required this.recipe});
   final CoffeeRecipe recipe;
+
+  void _shareRecipe(BuildContext context) {
+    final text = '☕ *${recipe.name}* — ${recipe.methodName}\n'
+        '⚖️ Kahve: ${fmtNum(recipe.coffeeGrams)} g | Su: ${fmtNum(recipe.waterMl)} ml (${fmtRatio(recipe.ratio)})\n'
+        '🌡️ Sıcaklık: ${recipe.waterTempC}°C | ⏱️ Süre: ${fmtLongDuration(recipe.totalTimeSeconds)}\n'
+        '⚙️ Öğütüm: ${recipe.grindSize}\n'
+        '${recipe.notes.isNotEmpty ? "📝 Notlar: ${recipe.notes}\n" : ""}'
+        '— Barista Brew ile hazırlandı ☕';
+
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reçete panoya kopyalandı! 📋')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,54 +142,129 @@ class _RecipeCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(recipe.name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 16)),
+                  child: Text(
+                    recipe.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Bu reçeteyle demle',
+                  icon: Icon(Icons.play_circle_fill,
+                      color: context.accentCaramel, size: 28),
+                  onPressed: () =>
+                      context.read<AppState>().startTimerWithRecipe(recipe),
                 ),
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: AppColors.coffee),
+                  icon: Icon(Icons.more_vert, color: context.accentCoffee),
                   onSelected: (v) {
-                    if (v == 'edit') {
+                    if (v == 'brew') {
+                      context.read<AppState>().startTimerWithRecipe(recipe);
+                    } else if (v == 'edit') {
                       RecetasScreenBridge.openForm(context, recipe);
+                    } else if (v == 'share') {
+                      _shareRecipe(context);
                     } else if (v == 'delete') {
-                      context
-                          .read<AppState>()
-                          .deleteRecipe(recipe.id);
+                      context.read<AppState>().deleteRecipe(recipe.id);
                     }
                   },
                   itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Düzenle')),
-                    PopupMenuItem(value: 'delete', child: Text('Sil')),
+                    PopupMenuItem(
+                      value: 'brew',
+                      child: Row(
+                        children: [
+                          Icon(Icons.timer_outlined, size: 18),
+                          SizedBox(width: 8),
+                          Text('Zamanlayıcıda Demle'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'share',
+                      child: Row(
+                        children: [
+                          Icon(Icons.share_outlined, size: 18),
+                          SizedBox(width: 8),
+                          Text('Reçeteyi Paylaş'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 18),
+                          SizedBox(width: 8),
+                          Text('Düzenle'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline,
+                              size: 18, color: AppColors.error),
+                          SizedBox(width: 8),
+                          Text('Sil', style: TextStyle(color: AppColors.error)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(recipe.methodName,
-                style: TextStyle(color: AppColors.coffee, fontSize: 13)),
+            const SizedBox(height: 2),
+            Text(
+              recipe.methodName,
+              style: TextStyle(color: context.accentCoffee, fontSize: 13),
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
-                _Pill(bg: AppColors.milk, value: '${fmtNum(recipe.coffeeGrams)} g kahve'),
+                _Pill(
+                  bg: context.containerMilk,
+                  value: '${fmtNum(recipe.coffeeGrams)} g kahve',
+                ),
                 const SizedBox(width: 8),
-                _Pill(bg: AppColors.milk, value: '${fmtNum(recipe.waterMl)} ml su'),
+                _Pill(
+                  bg: context.containerMilk,
+                  value: '${fmtNum(recipe.waterMl)} ml su',
+                ),
               ],
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                _Pill(bg: AppColors.caramel.withValues(alpha: 0.15), value: fmtRatio(recipe.ratio)),
+                _Pill(
+                  bg: context.accentCaramel.withValues(alpha: 0.18),
+                  value: fmtRatio(recipe.ratio),
+                ),
                 const SizedBox(width: 8),
-                _Pill(bg: AppColors.caramel.withValues(alpha: 0.15), value: '${recipe.waterTempC}°C'),
+                _Pill(
+                  bg: context.accentCaramel.withValues(alpha: 0.18),
+                  value: '${recipe.waterTempC}°C',
+                ),
+                const SizedBox(width: 8),
+                _Pill(
+                  bg: context.accentCaramel.withValues(alpha: 0.18),
+                  value: fmtLongDuration(recipe.totalTimeSeconds),
+                ),
               ],
             ),
             if (recipe.notes.isNotEmpty) ...[
               const SizedBox(height: 10),
-              Text(recipe.notes,
-                  style: TextStyle(
-                      fontSize: 13,
-                      height: 1.4,
-                      color: AppColors.espresso.withValues(alpha: 0.8))),
+              Text(
+                recipe.notes,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: context.textPrimary.withValues(alpha: 0.8),
+                ),
+              ),
             ],
           ],
         ),
@@ -192,19 +286,30 @@ class _Pill extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(value,
-          style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.espresso)),
+      child: Text(
+        value,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: context.textPrimary,
+        ),
+      ),
     );
   }
 }
 
 /// Yeni reçete eklemek / düzenlemek için form.
 class RecipeFormSheet extends StatefulWidget {
-  const RecipeFormSheet({super.key, this.existing});
+  const RecipeFormSheet({
+    super.key,
+    this.existing,
+    this.initialCoffee,
+    this.initialRatio,
+  });
+
   final CoffeeRecipe? existing;
+  final double? initialCoffee;
+  final double? initialRatio;
 
   @override
   State<RecipeFormSheet> createState() => _RecipeFormSheetState();
@@ -225,20 +330,32 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
   void initState() {
     super.initState();
     final e = widget.existing;
+    final initCoffee = widget.initialCoffee != null
+        ? fmtNum(widget.initialCoffee!)
+        : (e != null ? fmtNum(e.coffeeGrams) : '18');
+    final initRatio = widget.initialRatio != null
+        ? fmtNum(widget.initialRatio!)
+        : (e != null ? fmtNum(e.ratio) : '16');
+
     _nameCtrl = TextEditingController(text: e?.name ?? '');
-    _coffeeCtrl = TextEditingController(
-        text: e != null ? fmtNum(e.coffeeGrams) : '18');
-    _ratioCtrl =
-        TextEditingController(text: e != null ? fmtNum(e.ratio) : '16');
+    _coffeeCtrl = TextEditingController(text: initCoffee);
+    _ratioCtrl = TextEditingController(text: initRatio);
     _tempCtrl =
         TextEditingController(text: e != null ? '${e.waterTempC}' : '93');
     _timeCtrl = TextEditingController(
         text: e != null ? '${e.totalTimeSeconds}' : '180');
     _notesCtrl = TextEditingController(text: e?.notes ?? '');
+
     if (e != null) {
       _methodId = BrewMethodsData.all.any((m) => m.name == e.methodName)
           ? BrewMethodsData.all.firstWhere((m) => m.name == e.methodName).id
           : BrewMethodsData.all.first.id;
+    } else if (widget.initialRatio != null) {
+      final matching = BrewMethodsData.all.firstWhere(
+        (m) => (m.ratio - widget.initialRatio!).abs() < 0.5,
+        orElse: () => BrewMethodsData.byId('v60'),
+      );
+      _methodId = matching.id;
     }
   }
 
@@ -310,15 +427,18 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
             Row(
               children: [
                 Expanded(
-                  child: Text(_isEdit ? 'Reçeteyi Düzenle' : 'Yeni Reçete',
-                      style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.espresso)),
+                  child: Text(
+                    _isEdit ? 'Reçeteyi Düzenle' : 'Yeni Reçete',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
+                  ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: AppColors.coffee),
+                  icon: Icon(Icons.close, color: context.accentCoffee),
                 ),
               ],
             ),
@@ -326,7 +446,9 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
             TextField(
               controller: _nameCtrl,
               decoration: const InputDecoration(
-                  labelText: 'Reçete adı', hintText: 'Örn. Sabah V60’ı'),
+                labelText: 'Reçete adı',
+                hintText: 'Örn. Sabah V60’ı',
+              ),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
@@ -353,8 +475,8 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
                 Expanded(
                   child: TextField(
                     controller: _coffeeCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
                         labelText: 'Kahve (g)', suffixText: 'g'),
                     onChanged: (_) => setState(() {}),
@@ -364,8 +486,8 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
                 Expanded(
                   child: TextField(
                     controller: _ratioCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
                         labelText: 'Oran', suffixText: '1:X'),
                     onChanged: (_) => setState(() {}),
@@ -380,7 +502,8 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
                   child: TextField(
                     controller: _tempCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Sıcaklık (°C)'),
+                    decoration:
+                        const InputDecoration(labelText: 'Sıcaklık (°C)'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -398,26 +521,30 @@ class _RecipeFormSheetState extends State<RecipeFormSheet> {
               controller: _notesCtrl,
               maxLines: 2,
               decoration: const InputDecoration(
-                  labelText: 'Notlar (opsiyonel)',
-                  hintText: 'Öğütüm incelik, tat notları…'),
+                labelText: 'Notlar (opsiyonel)',
+                hintText: 'Öğütüm inceliği, tat notları…',
+              ),
             ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.milk,
+                color: context.containerMilk,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.water_drop, color: AppColors.coffee),
+                  Icon(Icons.water_drop, color: context.accentCoffee),
                   const SizedBox(width: 10),
                   Text('Tahmini su: ',
-                      style: TextStyle(color: AppColors.coffee)),
-                  Text('${fmtNum(water)} ml',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.espresso)),
+                      style: TextStyle(color: context.accentCoffee)),
+                  Text(
+                    '${fmtNum(water)} ml',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -442,7 +569,7 @@ class RecetasScreenBridge {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.cream,
+      backgroundColor: context.bgCream,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),

@@ -17,11 +17,17 @@ class BaristaBrewApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AppState(),
-      child: MaterialApp(
-        title: 'Barista Brew',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        home: const HomeScreen(),
+      child: Consumer<AppState>(
+        builder: (context, state, _) {
+          return MaterialApp(
+            title: 'Barista Brew',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: state.themeMode,
+            home: const HomeScreen(),
+          );
+        },
       ),
     );
   }

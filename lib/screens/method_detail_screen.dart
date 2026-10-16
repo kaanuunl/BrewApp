@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/brew_method.dart';
+import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 
@@ -12,8 +14,8 @@ class MethodDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final water = method.waterForCoffee(method.defaultCoffeeGrams);
-    final totalStepsSeconds = method.steps.fold<int>(
-        0, (sum, s) => sum + (s.durationSeconds ?? 0));
+    final totalStepsSeconds =
+        method.steps.fold<int>(0, (sum, s) => sum + (s.durationSeconds ?? 0));
 
     return Scaffold(
       appBar: AppBar(title: Text(method.name)),
@@ -22,9 +24,50 @@ class MethodDetailScreen extends StatelessWidget {
         children: [
           _Hero(method: method),
           const SizedBox(height: 16),
-          Text(method.description,
-              style: TextStyle(
-                  fontSize: 15, height: 1.5, color: AppColors.espresso.withValues(alpha: 0.9))),
+          Text(
+            method.description,
+            style: TextStyle(
+              fontSize: 15,
+              height: 1.5,
+              color: context.textPrimary.withValues(alpha: 0.9),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () {
+                    context.read<AppState>().startTimerWithMethod(method);
+                    Navigator.of(context).pop();
+                  },
+                  icon: const Icon(Icons.timer_outlined, size: 18),
+                  label: const Text('Zamanlayıcıyı Başlat'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                onPressed: () {
+                  context.read<AppState>().openCalculatorWith(
+                        ratio: method.ratio,
+                        coffee: method.defaultCoffeeGrams,
+                      );
+                  Navigator.of(context).pop();
+                },
+                icon: const Icon(Icons.calculate_outlined, size: 18),
+                label: const Text('Hesapla'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: context.accentCoffee,
+                  side: BorderSide(color: context.borderLatte),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -58,23 +101,24 @@ class MethodDetailScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          const _SectionTitle('Varsayılan ölçü'),
+          _SectionTitle('Varsayılan ölçü', color: context.textPrimary),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: AppColors.milk,
+              color: context.containerMilk,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               children: [
                 Expanded(
-                  child: _KeyValue('Kahve', '${fmtNum(method.defaultCoffeeGrams)} g'),
+                  child: _KeyValue(
+                      'Kahve', '${fmtNum(method.defaultCoffeeGrams)} g'),
                 ),
                 Container(
                   width: 1,
                   height: 40,
-                  color: AppColors.latte,
+                  color: context.borderLatte,
                 ),
                 Expanded(
                   child: _KeyValue('Su', '${fmtNum(water)} ml'),
@@ -83,7 +127,7 @@ class MethodDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const _SectionTitle('Adımlar'),
+          _SectionTitle('Adımlar', color: context.textPrimary),
           const SizedBox(height: 10),
           for (var i = 0; i < method.steps.length; i++)
             _StepTile(
@@ -95,12 +139,11 @@ class MethodDetailScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Adım süreleri toplamı: ${fmtLongDuration(totalStepsSeconds)}',
-              style: const TextStyle(
-                  fontSize: 13, color: AppColors.coffee),
+              style: TextStyle(fontSize: 13, color: context.textSecondary),
             ),
           ],
           const SizedBox(height: 24),
-          const _SectionTitle('Püf noktaları'),
+          _SectionTitle('Püf noktaları', color: context.textPrimary),
           const SizedBox(height: 10),
           for (final tip in method.tips)
             Padding(
@@ -108,18 +151,21 @@ class MethodDetailScreen extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 3),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
                     child: Icon(Icons.verified_outlined,
-                        size: 18, color: AppColors.caramel),
+                        size: 18, color: context.accentCaramel),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(tip,
-                        style: TextStyle(
-                            fontSize: 14,
-                            height: 1.45,
-                            color: AppColors.espresso.withValues(alpha: 0.9))),
+                    child: Text(
+                      tip,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.45,
+                        color: context.textPrimary.withValues(alpha: 0.9),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -142,8 +188,10 @@ class _Hero extends StatelessWidget {
           width: 72,
           height: 72,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.coffee, AppColors.espresso],
+            gradient: LinearGradient(
+              colors: context.isDark
+                  ? [const Color(0xFF4A3428), const Color(0xFF2E1F18)]
+                  : [AppColors.coffee, AppColors.espresso],
             ),
             borderRadius: BorderRadius.circular(22),
           ),
@@ -154,24 +202,30 @@ class _Hero extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(method.subtitle,
-                  style: TextStyle(
-                      color: AppColors.coffee,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15)),
+              Text(
+                method.subtitle,
+                style: TextStyle(
+                  color: context.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
               const SizedBox(height: 6),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.milk,
+                  color: context.containerMilk,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text('Zorluk: ${method.difficulty.label}',
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.espresso,
-                        fontWeight: FontWeight.w600)),
+                child: Text(
+                  'Zorluk: ${method.difficulty.label}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
@@ -182,14 +236,20 @@ class _Hero extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title);
+  const _SectionTitle(this.title, {required this.color});
   final String title;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Text(title,
-        style: const TextStyle(
-            fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.espresso));
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+        color: color,
+      ),
+    );
   }
 }
 
@@ -209,24 +269,28 @@ class _StatTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.foam,
+          color: context.cardFoam,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.latte),
+          border: Border.all(color: context.borderLatte),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: AppColors.caramel, size: 20),
+            Icon(icon, color: context.accentCaramel, size: 20),
             const SizedBox(height: 8),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.coffee)),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: context.textSecondary),
+            ),
             const SizedBox(height: 2),
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.espresso)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: context.textPrimary,
+              ),
+            ),
           ],
         ),
       ),
@@ -244,14 +308,19 @@ class _KeyValue extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(label,
-            style: const TextStyle(fontSize: 13, color: AppColors.coffee)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 13, color: context.textSecondary),
+        ),
         const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: AppColors.espresso)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: context.textPrimary,
+          ),
+        ),
       ],
     );
   }
@@ -277,17 +346,21 @@ class _StepTile extends StatelessWidget {
             Container(
               width: 32,
               height: 32,
-              decoration: const BoxDecoration(
-                color: AppColors.coffee,
+              decoration: BoxDecoration(
+                color: context.accentCoffee,
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: Text('$index',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w800)),
+              child: Text(
+                '$index',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
             if (!isLast)
-              Container(width: 2, height: 40, color: AppColors.latte),
+              Container(width: 2, height: 40, color: context.borderLatte),
           ],
         ),
         const SizedBox(width: 12),
@@ -300,24 +373,35 @@ class _StepTile extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(step.title,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 15)),
+                      child: Text(
+                        step.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: context.textPrimary,
+                        ),
+                      ),
                     ),
                     if (step.durationSeconds != null)
-                      Text(fmtDuration(step.durationSeconds!),
-                          style: const TextStyle(
-                              color: AppColors.caramel,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13)),
+                      Text(
+                        fmtDuration(step.durationSeconds!),
+                        style: TextStyle(
+                          color: context.accentCaramel,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 3),
-                Text(step.description,
-                    style: TextStyle(
-                        fontSize: 13.5,
-                        height: 1.4,
-                        color: AppColors.espresso.withValues(alpha: 0.85))),
+                Text(
+                  step.description,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.4,
+                    color: context.textPrimary.withValues(alpha: 0.85),
+                  ),
+                ),
               ],
             ),
           ),
